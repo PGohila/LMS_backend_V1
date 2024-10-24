@@ -170,3 +170,36 @@ class PenaltiesSerializer(serializers.ModelSerializer):
         model = Penalties
         fields = "__all__"
 
+class CustomDocumentEntitySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CustomDocumentEntity
+        exclude = ('created_by','created_at','update_by','update_at')
+
+
+class FolderMasterSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = FolderMaster
+        exclude = ('created_by','created_at','update_by','update_at')
+        
+class FolderMasterSerializer(serializers.ModelSerializer):
+    parent_folder=FolderMasterSerializer()
+    class Meta:
+        model = FolderMaster
+        fields = '__all__' 
+
+
+class DepartmentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Department
+        fields = '__all__'
+
+class DocumentCategorySerializer(serializers.ModelSerializer):
+    department = DepartmentSerializer()
+    class Meta:
+        model = DocumentCategory
+        fields = '__all__'
+
+class DocumentTypeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DocumentType
+        fields = '__all__'  

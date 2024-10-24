@@ -724,3 +724,92 @@ class Notifications(models.Model):
 
 
 
+#===============DMS===================
+
+class CustomDocumentEntity(models.Model):
+	entity_id = models.CharField(max_length=100, unique=True)
+	entity_name = models.CharField(max_length=100)
+	type=[
+		('loan','loan'),
+	]
+	entity_type = models.CharField(max_length=100,choices=type)
+	description = models.TextField(blank=True,null=True)
+	created_by = models.ForeignKey(User, on_delete=models.CASCADE,related_name="DocEntityType_created_by")
+	created_at = models.DateTimeField(auto_now_add=True)
+	update_by = models.ForeignKey(User, on_delete=models.CASCADE, blank=True, null=True,related_name="DocEntityType_update_by")
+	update_at = models.DateTimeField(auto_now=True)
+
+	# def __str__(self):
+	# 	return self.entity_id
+
+class FolderMaster(models.Model):
+	folder_id=models.CharField(max_length=100, unique=True,blank=False,null=False)
+	folder_name=models.CharField(max_length=100,blank=False,null=False)
+	description = models.TextField(max_length=500,blank=True, null=True)
+	entity=models.ForeignKey(CustomDocumentEntity, on_delete=models.CASCADE)
+	customer=models.ForeignKey(Customer, on_delete=models.CASCADE,blank=True, null=True)
+	master_checkbox_file = models.BooleanField(default=False, blank=True, null=True)
+	parent_folder=models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='FolderMasters')
+	default_folder=models.BooleanField(default=False)
+	created_by = models.ForeignKey(User, on_delete=models.CASCADE,related_name="FolderMastere_created_by")
+	created_at = models.DateTimeField(auto_now_add=True)
+	update_by = models.ForeignKey(User, on_delete=models.CASCADE, blank=True, null=True,related_name="FolderMastere_update_by")
+	update_at = models.DateTimeField(auto_now=True)
+
+
+class DocumentType(models.Model):
+	type_name = models.CharField(max_length=100, unique=True)
+	short_name = models.CharField(max_length=100)
+	description = models.TextField(blank=True,null=True)
+	created_by = models.ForeignKey(User, on_delete=models.CASCADE,related_name="DocumentType_created_by")
+	created_at = models.DateTimeField(auto_now_add=True)
+	update_by = models.ForeignKey(User, on_delete=models.CASCADE, blank=True, null=True,related_name="DocumentType_update_by")
+	update_at = models.DateTimeField(auto_now=True)  
+
+class Department(models.Model):
+	department_name = models.CharField(max_length=100)
+	description = models.TextField(blank=True,null=True)
+	created_by = models.ForeignKey(User, on_delete=models.CASCADE,related_name="Department_created_by")
+	created_at = models.DateTimeField(auto_now_add=True)
+	update_by = models.ForeignKey(User, on_delete=models.CASCADE, blank=True, null=True,related_name="Department_update_by")
+	update_at = models.DateTimeField(auto_now=True) 
+
+class DocumentCategory(models.Model):
+	category_name = models.CharField(max_length=100, unique=True)
+	department = models.ForeignKey(Department, on_delete=models.CASCADE)
+	description = models.TextField(blank=True,null=True)
+	created_by = models.ForeignKey(User, on_delete=models.CASCADE,related_name="DocumentCategory_created_by")
+	created_at = models.DateTimeField(auto_now_add=True)
+	update_by = models.ForeignKey(User, on_delete=models.CASCADE, blank=True, null=True,related_name="DocumentCategory_update_by")
+	update_at = models.DateTimeField(auto_now=True)
+ 
+class DocumentUpload(models.Model):
+	document_id=models.CharField(max_length=100, primary_key=True)
+	document_title=models.CharField(max_length=100,blank=False,null=False)
+	document_category=models.ForeignKey(DocumentCategory,on_delete=models.CASCADE)
+	document_type=models.ForeignKey(DocumentType,on_delete=models.CASCADE)
+	entity_type=models.ManyToManyField(CustomDocumentEntity,blank=True)
+	folder=models.ForeignKey(FolderMaster,on_delete=models.CASCADE,blank=True, null=True)
+	document_size=models.PositiveBigIntegerField(blank=True,null=True)
+	description = models.TextField(blank=True, null=True)
+	document_upload = models.FileField(blank=True, null=True)
+	upload_date = models.DateField(blank=True,null=True)
+	expiry_date= models.DateField(blank=True,null=True)
+	start_date=models.DateField(blank=True,null=True)
+	end_date=models.DateField(blank=True,null=True)
+	created_by = models.ForeignKey(User, on_delete=models.CASCADE,related_name="DocumentUpload_created_by")
+	created_at = models.DateTimeField(auto_now_add=True)
+	update_by = models.ForeignKey(User, on_delete=models.CASCADE, blank=True, null=True,related_name="DocumentUpload_update_by")
+	update_at = models.DateTimeField(auto_now=True)
+
+
+class DocumentAccess(models.Model):
+	document = models.ForeignKey(DocumentUpload,on_delete=models.CASCADE)
+	access_to = models.ForeignKey(User, on_delete=models.CASCADE,related_name="DocumentAccess_access_to")
+	permission = models.TextField(blank=True,null=True)
+	expiry_from_at = models.DateTimeField(blank=True,null=True)
+	expiry_to_at = models.DateTimeField(blank=True,null=True)
+	created_by = models.ForeignKey(User, on_delete=models.CASCADE,related_name="DocumentAccess_created_by")
+	created_at = models.DateTimeField(auto_now_add=True)
+	update_by = models.ForeignKey(User, on_delete=models.CASCADE, blank=True, null=True,related_name="DocumentAccess_update_by")
+	update_at = models.DateTimeField(auto_now=True)

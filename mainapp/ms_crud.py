@@ -1,4 +1,7 @@
 from django.core.exceptions import ValidationError
+
+from lms_backend import settings
+from mainapp.dms import create_entity, create_folder_for_all_customer, is_valid_current_datetime
 from .models import *
 from .serializers import *
 from .middleware import get_current_request
@@ -25,6 +28,8 @@ def create_company(name,address,email,phone,registration_number,is_active=False,
             incorporation_date = incorporation_date,
             is_active=is_active,
         )
+        create_entity(entity_name=name,entity_type="loan")
+        
         return success(f'Successfully created {instance}')
     except ValidationError as e:
         print(f"Validation Error: {e}")
@@ -129,6 +134,9 @@ def create_customer(company_id, firstname, lastname, email, phone_number, addres
             expiry_date = expiry_date,
             is_active = is_active,
         )
+        customer_id=instance.id
+        print("customer_id34567890",customer_id)
+        create_folder_for_all_customer(customer_id,company_id)
         return success(f'Successfully created {instance}')
     except Company.DoesNotExist:
         return error('Invalid Company ID: Destination not found.')
@@ -3031,3 +3039,143 @@ def delete_repayment_schedule(repayment_schedule_id):
 #         raise ValueError("Customer does not exist")
 #     except Exception as e:
 #         raise ValueError(f"An error occurred while calculating the credit score: {e}")
+
+
+
+#======================DMS===============
+
+def entity_master_view(entity_id=None):
+    print("entity_master_view34567890")
+    try:
+        if entity_id:
+            if isinstance(entity_id,int):
+                records = CustomDocumentEntity.objects.filter(id=entity_id)
+            else:
+                records = CustomDocumentEntity.objects.filter(entity_id=entity_id)
+            if records.exists():
+                record = records.last()
+                serializer = CustomDocumentEntitySerializer(record)
+            return success(serializer.data)
+        else:
+            records = CustomDocumentEntity.objects.all()
+            serializer = CustomDocumentEntitySerializer(records,many=True)
+            return success(serializer.data)
+    except Exception as e:
+        return error(e)
+    
+def entity_folders_list(entity_id):
+    try:
+        print("entity_iderrort67890+++;;;;",entity_id)
+        entity_instance = CustomDocumentEntity.objects.get(entity_id=entity_id)
+        print('entity_instance=====',entity_instance)
+        records = FolderMaster.objects.filter(entity=entity_instance,default_folder=True)
+        serializer = FolderMasterSerializer(records,many=True)
+        return success(serializer.data)
+    except CustomDocumentEntity.DoesNotExist:
+        return error('Entity_id is invalid')
+    except Exception as e:
+        return error(e)  
+    
+def folder_master_view(folder_id=None):
+    print('folder_idiuiuy789098',folder_id)
+    try:
+        if folder_id:
+            records = FolderMaster.objects.filter(parent_folder__folder_id=folder_id)
+            serializer = FolderMasterSerializer(records,many=True)
+            return success(serializer.data)
+        else:
+            records = FolderMaster.objects.filter(parent_folder__isnull=True)
+            serializer = FolderMasterSerializer(records,many=True)
+            return error(serializer.data)
+    except Exception as e:
+        print('folder_list',e)
+        return error(e)
+
+
+def folder_documents_list(folder_id):
+    try:
+        request = get_current_request()
+        if not request.user.is_authenticated:
+            return error('Login required')
+        
+        print("folder_id--",folder_id)          
+        records = DocumentUpload.objects.filter(folder__folder_id=folder_id)
+        print("records___folder",records)
+        document_data = []
+        for data in records:
+       
+            doc_obj = DocumentAccess.objects.filter(document_id=data.document_id,access_to=request.user).last()
+           
+            if request.user.is_superuser:
+                permission = ['edit', 'view', 'download', 'delete','share']
+            else:
+              
+                if doc_obj:
+                   expiry_time = is_valid_current_datetime(doc_obj.expiry_from_at, doc_obj.expiry_to_at)
+                   print('expiry_time',expiry_time)
+                   if expiry_time:
+                        permission = doc_obj.permission
+                   else:
+                       permission=[]
+                else:
+                    permission = []
+            if data.end_date and data.start_date:
+                remaining_days = (data.end_date - data.start_date).days
+            else: 
+                remaining_days = None    
+            print(f"Remaining days: {remaining_days}")            
+
+            document_data.append({                       
+                'document_id': data.document_id,
+                'document_title': data.document_title,
+                'folder': data.folder.folder_id,
+                'document_size': data.document_size,
+                'description': data.description,
+                'document_upload': settings.MEDIA_URL + data.document_upload.name if data.document_upload else None,
+                'upload_date': data.upload_date,
+                'update_at': data.update_at,
+                'start_date':data.start_date,
+                'remaining_days':remaining_days,
+                'end_date':data.end_date,
+                'permission': permission,
+              
+            })
+        return success(document_data)
+    except Exception as e:
+        return error(str(e))
+
+
+def document_category_view(document_category_id=None):
+    try:
+        if document_category_id:
+            records = DocumentCategory.objects.filter(id=document_category_id)
+            if records.exists():
+                record=records.last()
+                serializer = DocumentCategorySerializer(record)
+                return success(serializer.data)
+            else:
+                return error('document_category_id is invalid')
+        else:
+            records = DocumentCategory.objects.all()
+            serializer = DocumentCategorySerializer(records,many=True)
+            return success(serializer.data)
+    except Exception as e:
+        return error(e)
+    
+def document_type_view(document_type_id=None):
+    try:
+        if document_type_id:
+
+            records = DocumentType.objects.filter(id=document_type_id)
+            if records.exists():
+                record=records.last()
+                serializer = DocumentTypeSerializer(record)
+                return success(serializer.data)
+            else:
+                return error('document_type_id is invalid')
+        else:
+            records = DocumentType.objects.all()
+            serializer = DocumentTypeSerializer(records,many=True)
+            return success(serializer.data)
+    except Exception as e:
+        return error(e)
