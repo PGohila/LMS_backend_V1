@@ -637,7 +637,7 @@ def loan_risk_assessment_detail(application_id):
 
 
 def loan_approval(company_id,loanapp_id, approval_status = None,rejected_reason = None):
-    try:
+    # try:
         request = get_current_request()
         if not request.user.is_authenticated:
             return error('Login required')
@@ -695,7 +695,7 @@ def loan_approval(company_id,loanapp_id, approval_status = None,rejected_reason 
             # calling repayment schedule 
             schedules = calculate_repayment_schedule(instance.loan_amount,instance.interest_rate, instance.tenure, instance.tenure_type, instance.repayment_schedule, instance.loan_calculation_method, instance.repayment_start_date, instance.repayment_mode)
             if schedules['status_code'] == 1: 
-                return error(f"An error occurred: {loan['data']}")
+                return error(f"An error occurred: {schedules['data']}")
             
             for data in schedules['data']:
                 # generate Unique id 
@@ -705,11 +705,11 @@ def loan_approval(company_id,loanapp_id, approval_status = None,rejected_reason 
                     last_id = generate_id.schedule_id[10:]
                 schedule_id = unique_id('SID',last_id)
 
-                RepaymentSchedule.objects.create(
+                aa = RepaymentSchedule.objects.create(
                     company_id = instance.company.id,
                     schedule_id = schedule_id,
                     loan_application_id = instance.id,
-                    loan_id_id = loan,
+                    loan_id_id = loan['data'],
                     period = float(data['Period']),
                     repayment_date = data['Due_Date'],
                     instalment_amount = float(data['Installment']),
@@ -717,6 +717,7 @@ def loan_approval(company_id,loanapp_id, approval_status = None,rejected_reason 
                     interest_amount = float(data['Interest']),
                     remaining_balance = float(data['Closing_Balance']),
                 )
+                print("========================",aa)
             if loan['status_code'] == 1:
                 return error(f"An error occurred: {loan['data']}")
         elif approval_status == "Rejected":
@@ -726,10 +727,10 @@ def loan_approval(company_id,loanapp_id, approval_status = None,rejected_reason 
             instance.application_status = "Submitted"
         instance.save()
         return success("Successfully Approved Your Application")
-    except LoanApplication.DoesNotExist:
-        return error('Instance does not exist')
-    except Exception as e:
-        return error(f"An error occurred: {e}")
+    # except LoanApplication.DoesNotExist:
+    #     return error('Instance does not exist')
+    # except Exception as e:
+    #     return error(f"An error occurred: {e}")
 
 def create_loan(loanapp_id):
     try:
@@ -1024,8 +1025,6 @@ def getting_approvedloan(company_id):
     except Exception as e:
         return error(f"An error occurred: {e}")
 
-
-
 def create_disbursement(company_id, customer_id,loan_id, loan_application_id, amount, disbursement_type, disbursement_status,disbursement_method,currency_id,bank=None,notes=None):
     try:
         request = get_current_request()
@@ -1212,7 +1211,6 @@ def confirmed_schedule(loan_id):
         return success('Sucessfully Confirmed') 
     except Exception as e:
         return error(f"An error occurred: {e}")
-
 
 
 def create_collaterals(company_id, loanapp_id, customer_id, collateral_type_id, collateral_value, valuation_date, collateral_status, insurance_status,description=None):
