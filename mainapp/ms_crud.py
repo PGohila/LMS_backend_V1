@@ -1,7 +1,8 @@
+import base64
 from django.core.exceptions import ValidationError
 
 from lms_backend import settings
-from mainapp.dms import create_entity, create_folder_for_all_customer, is_valid_current_datetime
+from mainapp.dms import create_entity, create_folder_for_all_customer, document_upload_audit, document_upload_history, is_valid_current_datetime, unique_id_generate_doc
 from .models import *
 from .serializers import *
 from .middleware import get_current_request
@@ -3181,3 +3182,282 @@ def document_type_view(document_type_id=None):
             return success(serializer.data)
     except Exception as e:
         return error(e)
+
+
+def folder_master_create(folder_name, entity_id, default_folder=False, customer_id=None, company_id=None, description=None, parent_folder_id=None):
+    try:
+        request = get_current_request()
+        if not request.user.is_authenticated:
+            return error('Login requried')
+        
+        
+        obj_count=FolderMaster.objects.all().count()
+
+        if customer_id:
+            customer_instances=Customer.objects.filter(id=customer_id)
+            if customer_instances.exists():
+                customer_id = customer_instances.last()
+            else:
+                return error("customer_id is invalid")
+        print('customer_id99099',customer_id)
+        if company_id:
+            company_instances=Company.objects.filter(id=company_id)
+            print('company_instances',company_instances)
+            if company_instances.exists():
+                company_id = company_instances.last()
+            else:
+                return error("company_id is invalid")
+            
+        if parent_folder_id:
+            parent_folder=FolderMaster.objects.filter(folder_id=parent_folder_id)
+            if parent_folder.exists():
+                parent_folder_id = parent_folder.last()
+                company_id = parent_folder_id.company
+            else:
+                return error("parent_folder_id is invalid")
+        entity_instance = CustomDocumentEntity.objects.get(entity_id=entity_id)
+        record = FolderMaster.objects.create(
+            folder_id=unique_id('FID',obj_count),
+            folder_name=folder_name,
+            description=description,
+            parent_folder=parent_folder_id,
+            entity=entity_instance,
+            customer=customer_id,
+            company=company_id,
+            default_folder=default_folder,
+            created_by=request.user,
+            update_by=request.user
+        )          
+        return success('Folder created successfully')
+    except CustomDocumentEntity.DoesNotExist:
+        return error('Entity_id is invalid')
+    except Exception as e:
+        return error(e)
+
+
+def document_category_view(document_category_id=None):
+    try:
+        if document_category_id:
+            records = DocumentCategory.objects.filter(id=document_category_id)
+            if records.exists():
+                record=records.last()
+                serializer = DocumentCategorySerializer(record)
+                return success(serializer.data)
+            else:
+                return error('document_category_id is invalid')
+        else:
+            records = DocumentCategory.objects.all()
+            serializer = DocumentCategorySerializer(records,many=True)
+            return success(serializer.data)
+    except Exception as e:
+        return error(e)
+
+
+
+def department_view(department_id=None):
+    try:
+        if department_id:
+            records = Department.objects.filter(id=department_id)
+            if records.exists():
+                record=records.last()
+                serializer = DepartmentSerializer(record)
+                return success(serializer.data)
+            else:
+                return error('department_id is invalid')
+        else:
+            records = Department.objects.all()
+            serializer = DepartmentSerializer(records,many=True)
+            return success(serializer.data)
+    except Exception as e:
+        return error(e)
+
+
+def document_category_create(category_name,department_id,description=None):
+    try:
+        request = get_current_request()
+        if not request.user.is_authenticated:
+            return error('Login requried')
+        
+        
+        record = DocumentCategory.objects.create(
+                category_name=category_name,
+                department_id=department_id,
+                description=description,
+                created_by=request.user,
+                update_by=request.user,
+            )
+        return success('Document type create successfully')
+    except Exception as e:
+        return error(e)
+
+def department_create(department_name,description=None):
+    try:
+        request = get_current_request()
+        if not request.user.is_authenticated:
+            return error('Login requried')
+        
+        record = Department.objects.create(
+                department_name=department_name,
+                description=description,
+                created_by=request.user,
+                update_by=request.user,
+            )
+        return success('Document type create successfully')
+    except Exception as e:
+        return error(e)
+
+def entity_master_create(entity_id,entity_name,entity_type,description=None,db_id=None):
+    try:
+        request = get_current_request()
+        if not request.user.is_authenticated:
+            return error('Login requried')
+        
+        
+        record = CustomDocumentEntity.objects.create(
+                entity_id=entity_id,
+                entity_name=entity_name,
+                entity_type=entity_type,
+                description=description,
+                created_by=request.user,
+                update_by=request.user,
+            )
+        return success('Custom entity create successfully')
+    except Exception as e:
+        return error(e)    
+
+def document_type_create(document_type_name,short_name,description=None):
+    try:
+        request = get_current_request()
+        if not request.user.is_authenticated:
+            return error('Login requried')
+
+        record = DocumentType.objects.create(
+                type_name=document_type_name,
+                short_name=short_name,
+                description=description,
+                created_by=request.user,
+                update_by=request.user,
+            )
+        return success('Document type create successfully')
+    except Exception as e:
+        return error(e)
+    
+
+def document_upload(document_title,document_category,document_type,entity_type,description,document_upload,folder_id,start_date=None,end_date=None):
+    try:
+        print('entity_type==+++',entity_type,folder_id)
+        request = get_current_request()
+        if not request.user.is_authenticated:
+            return error('Login requried')
+        
+        
+        # obj_count=DocumentUpload.objects.all().last()
+
+        # print("folder_instance---+++",folder_instance)
+    
+        folder_instance = FolderMaster.objects.get(folder_id=folder_id)
+        print("folder_instance---+++",folder_instance)
+        print("document_upload56789",document_upload)
+        record = DocumentUpload.objects.create(
+                document_id = unique_id_generate_doc('DID'),
+                document_title=document_title,
+                document_category_id=document_category,
+                document_type_id=document_type,
+                description=description,
+                document_upload=document_upload,
+                folder=folder_instance,
+                # upload_date=datetime.now(),
+                start_date=start_date,
+                end_date=end_date,
+                created_by=request.user,
+                update_by=request.user,
+                document_size=document_upload.size,
+            )        
+        print("document_id///++++",record.document_id) 
+        document = document_upload_history(record.document_id)
+        print("documentclientup",document)
+        document_audit = document_upload_audit('created',record.document_id)
+        print("document_upload_history///",document)    
+        print("document_audit///",document_audit)          
+        for data in entity_type:
+            entity = CustomDocumentEntity.objects.get(entity_id=data)
+            record.entity_type.add(entity)
+            record.save()
+        return success('Document uploaded successfully')
+    except Exception as e:
+        return error(e)   
+
+
+def document_content_view(document_id):
+    try:
+        request = get_current_request()
+        obj = DocumentUpload.objects.get(document_id=document_id)
+        document_url = request.build_absolute_uri(obj.document_upload.url)
+        with obj.document_upload.open('rb') as file:
+                content = base64.b64encode(file.read()).decode('utf-8')
+            
+        response = {
+            'content': content,  # Read the content of the file
+            'url': document_url  # Construct the base URL for the document
+        }
+        return success(response)
+    except DocumentUpload.DoesNotExist:
+        return error('document_id is invalid')
+    except Exception as e:
+        return error(str(e))
+
+def document_version(document_id):
+    try:
+        request = get_current_request()
+        if not request.user.is_authenticated:
+            return error('Login requried')       
+        print("document_id---",document_id)
+        record = DocumentUploadHistory.objects.filter(document_id=document_id).order_by('-version')
+        print('record---',record)
+        serializer = DocumentUploadHistorySerializer(record,many=True)
+        return success(serializer.data)
+       
+    except DocumentUploadHistory.DoesNotExist:
+        return error('Folder id not found')
+    except Exception as e:
+        return error(e) 
+
+#==================
+
+def folder_delete(entity_id=None,folder_id=None):
+    try:
+        if entity_id:
+            entity_instance = CustomDocumentEntity.objects.get(entity_id=entity_id)
+            #records = FolderMaster.objects.filter(entity=entity_instance,default_folder=True,matter__isnull=True)
+            print('records==-===',entity_instance)
+            entity_instance.delete()
+            return success('Entity Deleted Sucessfully')
+        if folder_id:
+            folder_instance=FolderMaster.objects.get(folder_id=folder_id)
+            folder_instance.delete()
+            return success('Folder Deleted Sucessfully')
+        
+    except CustomDocumentEntity.DoesNotExist:
+        return error('Entity_id is invalid')
+    except Exception as e:
+        return error(e)  
+    
+def document_delete(document_id):
+    try:
+        request = get_current_request()
+        if not request.user.is_authenticated:
+            return error('Login requried')
+        
+        
+        obj = DocumentUpload.objects.get(document_id=document_id)
+        print("document_delete+++",obj.document_id)
+        document_delete=document_upload_audit('deleted',obj.document_id)
+        print("document_delete---",document_delete)
+        obj.delete()
+    
+     
+        return success('Deleted Successfully')
+    except DocumentUpload.DoesNotExist:
+        return error('document_id is invalid')
+    except Exception as e:
+        return error(str(e))
