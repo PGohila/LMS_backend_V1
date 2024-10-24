@@ -401,7 +401,7 @@ class LoanAccount(models.Model):
     def __str__(self):
         return f"Loan Account for {self.loan.id}"
     
-# This model tracks the disbursement of funds for each loan.
+# This model tracks the disbursement of funds for each loan. each loan have disbursement account
 class LoanDisbursementAccount(models.Model):
     company = models.ForeignKey(Company,on_delete=models.CASCADE, related_name='%(class)s_company')
     loan = models.OneToOneField(Loan, on_delete=models.CASCADE, related_name="loan_detail4")
@@ -414,7 +414,7 @@ class LoanDisbursementAccount(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     
     def __str__(self):
-        return f"Disbursement for Loan {self.loan_application.id}"
+        return f"Disbursement for Loan {self.loan}"
 
 # This model handles all repayments made by the borrower.
 class LoanRepaymentAccount(models.Model):
