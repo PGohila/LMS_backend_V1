@@ -1,5 +1,5 @@
 from datetime import date
-
+from .models import *
 #Create your views here.
 def success(msg):
     # Create a dictionary named 'response' with two key-value pairs
@@ -58,8 +58,12 @@ def calculate_existing_liabilities(loans):
     Example: loans = [{'loan_type': 'home_loan', 'outstanding_amount': 50000}, ...]
     """
     total_liabilities = 0
+    print("fehgferretr")
     for loan in loans:
-        total_liabilities += loan['outstanding_amount']
+        print("sadasdasdas",loan)
+        loans = Loan.objects.get(id = loan )
+        total_liabilities += loans.loan_amount
+    
     
     return total_liabilities
 
@@ -67,13 +71,13 @@ def calculate_existing_liabilities(loans):
 # loan eligibilitity checking
 def check_loan_eligibility(applicant_details, loan_amount):
     errors = []
-    
+    print("============xjassasa")
     # Age check
     if not (21 <= applicant_details.age <= 65):
         errors.append("Applicant does not meet the age criteria (21-65 years).")
     
     # Income check
-    minimum_income = 25000  # Example threshold
+    minimum_income = 25000  # Example threshold # loan type minimum income
     if applicant_details.customer_income < minimum_income:
         errors.append(f"Monthly income is below the threshold of {minimum_income}.")
     

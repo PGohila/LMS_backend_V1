@@ -390,6 +390,8 @@ def create_loanapplication(company_id, customer_id, loan_amount,loantype_id, loa
             last_id = generate_id.application_id[9:]
         application_id = unique_id('LA',last_id)
 
+
+
         instance = LoanApplication.objects.create(
             company_id = company_id,
             application_id = application_id,
@@ -536,8 +538,9 @@ def check_loan_eligibilities_forall(company_id):
         for applications in instance:
             applicant_deatils = Customer.objects.get(pk=applications.customer_id.id)
             existing_loan = Loan.objects.filter(customer_id = applications.id)
+            loanids = [data.id for data in existing_loan ]
             # Calculate Exsisting loan liabilities
-            existing_loan_liabilities = calculate_existing_liabilities(existing_loan)
+            existing_loan_liabilities = calculate_existing_liabilities(loanids)
             applicant_deatils.existing_liabilities = existing_loan_liabilities
             applicant_deatils.save()
 
@@ -570,8 +573,9 @@ def check_loan_eligibilities(application_id):
         instance = LoanApplication.objects.get(pk=application_id)
         applicant_deatils = Customer.objects.get(pk=instance.customer_id.id)
         existing_loan = Loan.objects.filter(customer_id = applicant_deatils.id)
+        loanids = [data.id for data in existing_loan ]
         # Calculate Exsisting loan liabilities
-        existing_loan_liabilities = calculate_existing_liabilities(existing_loan)
+        existing_loan_liabilities = calculate_existing_liabilities(loanids)
         applicant_deatils.existing_liabilities = existing_loan_liabilities
         applicant_deatils.save()
 
@@ -762,10 +766,14 @@ def create_loan(loanapp_id):
             loanapp_id_id = loanapp_id,
             loan_id = loan_id,
             loan_amount = float(records.loan_amount),
+            approved_amount = float(records.loan_amount),
             interest_rate = float(records.interest_rate),
             tenure = records.tenure,
+            tenure_type = records.tenure_type,
+            repayment_schedule = records.repayment_schedule,
+            repayment_mode = records.repayment_mode,
+            interest_basics = records.interest_basics,
             loan_purpose = records.loan_purpose,
-
             workflow_stats = "Approved",
 
         )
@@ -1292,7 +1300,7 @@ def upload_collateraldocument(company_id,loanapplication_id,document_name,attach
 
 def view_collateraldocument(loan_application_id):
     try:
-        records = CollateralDocuments.objects.filter(application_id = loan_application_id)
+        records = CollateralDocuments.objects.filter(application_id_id = loan_application_id)
         serializer = CollateralDocumentsSerializer(records, many=True).data
         return success(serializer)
     except LoanApplication.DoesNotExist:

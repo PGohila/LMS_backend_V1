@@ -149,7 +149,7 @@ class Customer(models.Model):
     address = models.TextField()
     dateofbirth = models.DateField()
     customer_income = models.FloatField(default = 0.0) # monthly income
-    credit_score = models.IntegerField(default=0)
+    credit_score = models.IntegerField(default=651)
     employment_status = models.CharField(max_length=100,choices=EMPLOYMENT_STATUS)
     existing_liabilities = models.FloatField(default=0.0) # Stores the result of the eligibility check. mean previous loan outstanding amount
     expiry_date = models.DateField(null=True, blank=True)
@@ -226,7 +226,7 @@ class LoanApplication(models.Model):
         ('Approved', 'Approved'),
         ('Rejected', 'Rejected')
         ])  # application approval status
-    interest_rate = models.FloatField(default=0.0)
+    interest_rate = models.FloatField(default=0.0)  #
     tenure_type = models.CharField(max_length=100,choices=[
         ('days', 'Days'),
         ('weeks', 'Weeks'),
