@@ -203,3 +203,15 @@ class DocumentTypeSerializer(serializers.ModelSerializer):
     class Meta:
         model = DocumentType
         fields = '__all__'  
+
+class FolderMasterSerializer1(serializers.ModelSerializer):
+    class Meta:
+        model = FolderMaster
+        exclude = ('created_by','created_at','update_by','update_at')
+
+class DocumentUploadHistorySerializer(serializers.ModelSerializer):
+    folder=FolderMasterSerializer1() 
+    document_type = DocumentTypeSerializer()
+    class Meta:
+        model = DocumentUploadHistory
+        fields = '__all__'       
