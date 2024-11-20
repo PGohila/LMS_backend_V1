@@ -650,7 +650,7 @@ def loan_risk_assessment_detail(application_id):
 
 
 def loan_approval(company_id,loanapp_id, approval_status = None,rejected_reason = None):
-    # try:
+    try:
         request = get_current_request()
         if not request.user.is_authenticated:
             return error('Login required')
@@ -673,7 +673,7 @@ def loan_approval(company_id,loanapp_id, approval_status = None,rejected_reason 
                 principal_amount=instance.loan_amount,
                 outstanding_balance=instance.loan_amount,
             )
-
+            
             # 2. Create Loan Disbursement Account
             loan_disbursement_account = LoanDisbursementAccount.objects.create(
                 company_id = company_id,
@@ -730,7 +730,7 @@ def loan_approval(company_id,loanapp_id, approval_status = None,rejected_reason 
                     interest_amount = float(data['Interest']),
                     remaining_balance = float(data['Closing_Balance']),
                 )
-                print("========================",aa)
+             
             if loan['status_code'] == 1:
                 return error(f"An error occurred: {loan['data']}")
         elif approval_status == "Rejected":
@@ -740,10 +740,10 @@ def loan_approval(company_id,loanapp_id, approval_status = None,rejected_reason 
             instance.application_status = "Submitted"
         instance.save()
         return success("Successfully Approved Your Application")
-    # except LoanApplication.DoesNotExist:
-    #     return error('Instance does not exist')
-    # except Exception as e:
-    #     return error(f"An error occurred: {e}")
+    except LoanApplication.DoesNotExist:
+        return error('Instance does not exist')
+    except Exception as e:
+        return error(f"An error occurred: {e}")
 
 def create_loan(loanapp_id):
     try:
