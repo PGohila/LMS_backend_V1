@@ -869,7 +869,7 @@ class AuditTrail(models.Model):
     screen_name = models.CharField(max_length=50,null=True, blank=True)  #Screen Name 
     datetime = models.DateTimeField(auto_now_add=True)
     content_type = models.ForeignKey(ContentType, on_delete=models.SET_NULL, null=True,blank=True)
-    object_id = models.PositiveIntegerField()
+    object_id = models.PositiveIntegerField(null=True,blank=True)
     content_object = GenericForeignKey('content_type', 'object_id')
     action = models.CharField(max_length=50)  # 'create', 'update', 'delete'
     details = models.TextField(null=True, blank=True)

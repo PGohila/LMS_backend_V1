@@ -2,6 +2,7 @@ from mainapp.models import *
 from .scripts import *
 
 def log_audit_trail(user, screen_name,instance, action, details=None):
+    print("instance4567890p",instance)
     print("bdjshbjfhfjadsnhjaction",action,user,screen_name,instance,details)
     #Create 1 Customer Registration CM211124001 Object Created.
     try:
@@ -11,7 +12,7 @@ def log_audit_trail(user, screen_name,instance, action, details=None):
             user_id = user,
             screen_name=screen_name,
             content_type = content_type,
-            object_id = instance.id,
+            object_id = instance,
             content_object = instance,
             action = action,
             details = details,

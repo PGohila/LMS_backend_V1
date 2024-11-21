@@ -243,12 +243,13 @@ def delete_customer(customer_id):
             return error('Login required')
         
         instance = Customer.objects.get(pk=customer_id)
-        instance.delete()
-        print("instance4567u8io234567",instance)
         try:
             log_audit_trail(request.user.id,'Customer Registration', instance, 'Delete', 'Object Deleted.')
         except Exception as e:
-            return error(f"An error occurred: {e}")        
+            return error(f"An error occurred: {e}")         
+        instance.delete()
+        print("instance4567u8io234567",instance)
+       
         return success("Successfully deleted")
     
     except Customer.DoesNotExist:
