@@ -1,0 +1,11 @@
+{
+    "functions": [
+        "role_create",
+        "role_edit",
+        "role_delete",
+        "user_registration",
+        "user_edit",
+        "user_delete",
+        "get_user_record"
+    ]
+}
