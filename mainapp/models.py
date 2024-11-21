@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import User
-
+from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.models import ContentType
 # MS setup models
 class MSRegistration(models.Model):
     mservice_id = models.CharField(max_length=20,primary_key=True)
@@ -861,3 +862,14 @@ class DocumentUploadAudit(models.Model):
 	created_at = models.DateTimeField(auto_now_add=True)
 	updated_at = models.DateTimeField(auto_now=True)
 
+#===================
+    
+class AuditTrail(models.Model):
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    screen_name = models.CharField(max_length=50,null=True, blank=True)  #Screen Name 
+    datetime = models.DateTimeField(auto_now_add=True)
+    content_type = models.ForeignKey(ContentType, on_delete=models.SET_NULL, null=True,blank=True)
+    object_id = models.PositiveIntegerField()
+    content_object = GenericForeignKey('content_type', 'object_id')
+    action = models.CharField(max_length=50)  # 'create', 'update', 'delete'
+    details = models.TextField(null=True, blank=True)
