@@ -8,12 +8,13 @@ class RoleSerializer(serializers.ModelSerializer):
 
 
 class UserSerializer(serializers.ModelSerializer):
-    roles = serializers.StringRelatedField()
+    
     class Meta:
         model = User
         fields = "__all__"
 
 class UserProfileSerializer(serializers.ModelSerializer):
+    role = RoleSerializer()
     class Meta:
         model = UserProfile
         fields = "__all__"

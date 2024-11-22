@@ -1,4 +1,5 @@
 import json
+import random
 from django.core.exceptions import ValidationError
 from django.apps import apps
 from .models import *
@@ -7,6 +8,16 @@ from mainapp.middleware import get_current_request
 from mainapp.scripts import *
 from django.db.models import Q
 from django.contrib.auth.hashers import make_password
+from lms_backend.settings import EMAIL,PASSWORD
+
+import uuid
+
+def simple_unique_id_generation(prefix, identifier):
+
+    unique_part = str(uuid.uuid4())
+    
+    return f"{prefix}-{identifier}-{unique_part}"
+
 
 
     
@@ -35,7 +46,7 @@ def user_registration(first_name, last_name, email, phone_number, password,user_
     try:
         request = get_current_request()
         if not request.user.is_authenticated:
-            return error('Login required')
+            return error('Login required') 
         
         instance = User.objects.create(
             first_name=first_name,
@@ -360,3 +371,80 @@ def function_setup():
     except Exception as e:
         return error(f"An error occurred: {e}")
     
+def multi_factor_authentication(otp=None):
+    request = get_current_request()
+    if not request.user.is_authenticated:
+        return error('Login required')
+    user = request.user
+    otp_record = OTP.objects.filter(user=user,status = 'UNUSED').order_by('-created_at').first()
+    if otp_record.otp != otp:
+        return error('Invalid OTP')
+    user.multi_factor_auth = True  
+    user.save()
+    otp_record.status = 'USED'
+    otp_record.save()
+
+    return success('OTP verified successfully')
+
+
+def generate_and_send_otp():
+    request = get_current_request()
+    
+    if not request.user.is_authenticated:
+        return error('Login required')
+    user = request.user
+    otp_record = OTP.objects.create(user=user)
+    otp_code = otp_record.otp
+    send_otp_to_user(otp_code)
+    return success('OTP generated successfully')
+
+import requests
+
+def get_access_token():
+    url = "https://genericdelivery.pythonanywhere.com/api/token/"
+    payload = {
+        "email": EMAIL,
+        "password": PASSWORD,
+    }
+    headers = {
+        "Content-Type": "application/json",
+    }
+    response = requests.post(url, json=payload, headers=headers)
+    access_data = response.json()
+    return access_data.get('access')
+    
+
+def send_otp_to_user( otp_code):
+    request = get_current_request()
+    if not request.user.is_authenticated:
+        return error('Login required')
+    user = request.user
+    access_token = get_access_token()
+    print('access_token',access_token)
+
+    url = "https://genericdelivery.pythonanywhere.com/templatemanage/api/message/"
+    
+    # Prepare the request data
+    payload = {
+        "channel_id": 1,
+        "template_id": "TMP22112407355106",
+        "recipient_list": [user.email],  
+        "task_data": {
+            "otp": otp_code,
+            "name":user.first_name 
+        }
+    }
+    
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {access_token}"  
+    }
+    
+    response = requests.post(url, json=payload, headers=headers)
+    
+    if response.status_code == 200:
+        return success("OTP sent successfully!")
+    else:
+        return success(f"Failed to send OTP. Status Code: {response.status_code}, Response: {response.text}")
+
+

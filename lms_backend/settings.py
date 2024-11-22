@@ -187,3 +187,6 @@ SIMPLE_JWT = {
 PROJECT_ID = 2
 
 AUTH_USER_MODEL = 'user_management.User'
+
+EMAIL = "technical@bharatbhrands.in"
+PASSWORD = "1234" 

@@ -220,9 +220,13 @@ def login_view(request):
         user_data = {
             'user_data': serializers,
             'access_token': access_token,
-            'refresh_token': str(refresh)
+            'refresh_token': str(refresh),
+            'multi_factor_auth':user.multi_factor_auth
         }
         
         return Response(user_data)
     else:
         return Response({'error': 'Invalid credentials'}, status=400)
+    
+
+
