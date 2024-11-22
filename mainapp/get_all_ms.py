@@ -5,6 +5,8 @@ import json
 import requests
 from datetime import datetime
 from mainapp import ms_crud as microservices
+from user_management import service as user
+
 # service import
 
 def create_module(module_name):
@@ -140,7 +142,8 @@ def get_functions_with_parameters(module):
 
 # service list
 module_lists=[microservices]
-all_module_list = [module_lists] # here combining all the module here
+user_management=[user]
+all_module_list = [module_lists,user_management] # here combining all the module here
 
 # Register microservices for all modules
 for module_list in all_module_list: 

@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',
     'rest_framework',
     'mainapp',
+    'user_management',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -184,3 +185,5 @@ SIMPLE_JWT = {
 }
 
 PROJECT_ID = 2
+
+AUTH_USER_MODEL = 'user_management.User'
