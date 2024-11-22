@@ -1,4 +1,8 @@
 import json
+from rest_framework.decorators import api_view
+from django.contrib.auth import authenticate
+from rest_framework_simplejwt.tokens import RefreshToken
+from user_management.serializers import UserSerializer
 from .models import *
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -199,3 +203,26 @@ class EDMSModule(APIView):
             print('error main excepiton ',error)
             return Response(data=str(error),status=status.HTTP_404_NOT_FOUND)                       
 
+@api_view(['POST'])
+def login_view(request):
+    email = request.data.get('email')
+    print('email',email)
+    password = request.data.get('password')
+
+    user = authenticate(email=email, password=password)
+
+    if user is not None:
+        # Generate tokens using SimpleJWT
+        refresh = RefreshToken.for_user(user)
+        access_token = str(refresh.access_token)
+        serializers=UserSerializer(user).data
+        # Include user details along with the tokens
+        user_data = {
+            'user_data': serializers,
+            'access_token': access_token,
+            'refresh_token': str(refresh)
+        }
+        
+        return Response(user_data)
+    else:
+        return Response({'error': 'Invalid credentials'}, status=400)

@@ -2,6 +2,8 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
+from user_management.models import *
+
 # MS setup models
 class MSRegistration(models.Model):
     mservice_id = models.CharField(max_length=20,primary_key=True)
