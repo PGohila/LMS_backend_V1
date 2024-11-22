@@ -2,6 +2,7 @@ import base64
 from django.core.exceptions import ValidationError
 
 from lms_backend import settings
+from mainapp.common import log_audit_trail
 from mainapp.dms import create_entity, create_folder_for_all_customer, document_upload_audit, document_upload_history, is_valid_current_datetime, unique_id_generate_doc
 from .models import *
 from .serializers import *
@@ -18,7 +19,6 @@ def create_company(name,address,email,phone,registration_number,is_active=False,
         request = get_current_request()
         if not request.user.is_authenticated:
             return error('Login required')
-        
         instance = Company.objects.create(
             name=name,
             description=description,
@@ -30,7 +30,12 @@ def create_company(name,address,email,phone,registration_number,is_active=False,
             is_active=is_active,
         )
         create_entity(entity_name=name,entity_type="loan")
-        
+
+        try:
+            log_audit_trail(request.user.id,'Company Registration', instance, 'Create', 'Object Created.')
+        except Exception as e:
+            return error(f"An error occurred: {e}")
+
         return success(f'Successfully created {instance}')
     except ValidationError as e:
         print(f"Validation Error: {e}")
@@ -55,6 +60,12 @@ def update_company(company_id,address,email,phone,registration_number,name=None,
         instance.incorporation_date = incorporation_date if incorporation_date is not None else instance.incorporation_date
         instance.is_active = is_active if is_active is not None else instance.is_active
         instance.save()
+
+        try:
+            log_audit_trail(request.user.id,'Company Registration', instance, 'Update', 'Object Updated.')
+        except Exception as e:
+            return error(f"An error occurred: {e}")
+        
         return success('Successfully Updated')
     except  Company.DoesNotExist:
         print("Instance does not exist")
@@ -95,6 +106,12 @@ def delete_company(company_id):
         
         instance = Company.objects.get(pk=company_id)
         instance.delete()
+
+        try:
+            log_audit_trail(request.user.id,'Company Registration', instance, 'Delete', 'Object Deleted.')
+        except Exception as e:
+            return error(f"An error occurred: {e}")
+
         return success("Successfully deleted")
     
     except Company.DoesNotExist:
@@ -138,6 +155,13 @@ def create_customer(company_id, firstname, lastname, email, phone_number, addres
         customer_id=instance.id
         print("customer_id34567890",customer_id)
         create_folder_for_all_customer(customer_id,company_id)
+
+        try:
+            log_audit_trail(request.user.id,'Customer Registration', instance, 'Create', 'Object Created.')
+        except Exception as e:
+            return error(f"An error occurred: {e}")
+
+        
         return success(f'Successfully created {instance}')
     except Company.DoesNotExist:
         return error('Invalid Company ID: Destination not found.')
@@ -171,6 +195,11 @@ def update_customer(customer_id,company_id=None, firstname=None, lastname=None,a
         instance.expiry_date = expiry_date if expiry_date is not None else instance.expiry_date
         instance.is_active = is_active if is_active is not None else instance.is_active
         instance.save()
+
+        try:
+            log_audit_trail(request.user.id,'Customer Registration', instance, 'Update', 'Object Updated.')
+        except Exception as e:
+            return error(f"An error occurred: {e}")
 
         return success('Successfully Updated')
     except Company.DoesNotExist:
@@ -214,7 +243,13 @@ def delete_customer(customer_id):
             return error('Login required')
         
         instance = Customer.objects.get(pk=customer_id)
+        try:
+            log_audit_trail(request.user.id,'Customer Registration', instance, 'Delete', 'Object Deleted.')
+        except Exception as e:
+            return error(f"An error occurred: {e}")         
         instance.delete()
+        print("instance4567u8io234567",instance)
+       
         return success("Successfully deleted")
     
     except Customer.DoesNotExist:
@@ -257,6 +292,12 @@ def create_customerdocuments(company_id,customer_id, document_type_id, attachmen
             description = description,
  
         )
+
+        try:
+            log_audit_trail(request.user.id,'Customer Document Registration', instance, 'Create', 'Object Created.')
+        except Exception as e:
+            return error(f"An error occurred: {e}")
+
         return success(f'Successfully created {instance}')
     except Company.DoesNotExist:
         return error('Invalid Company ID: Destination not found.')
@@ -290,6 +331,12 @@ def update_customerdocuments(customerdocuments_id,company_id=None,customer_id=No
         instance.description = description if description is not None else instance.description
 
         instance.save()
+
+        try:
+            log_audit_trail(request.user.id,'Customer Document Registration', instance, 'Update', 'Object Updated.')
+        except Exception as e:
+            return error(f"An error occurred: {e}")
+
         return success('Successfully Updated')
     
     except Company.DoesNotExist:
@@ -348,6 +395,12 @@ def delete_customerdocuments(customerdocuments_id):
         
         instance = CustomerDocuments.objects.get(pk=customerdocuments_id)
         instance.delete()
+
+        try:
+            log_audit_trail(request.user.id,'Customer Document Registration', instance, 'Delete', 'Object Deleted.')
+        except Exception as e:
+            return error(f"An error occurred: {e}")
+        
         return success("Successfully deleted")
     
     except CustomerDocuments.DoesNotExist:
@@ -414,6 +467,11 @@ def create_loanapplication(company_id, customer_id, loan_amount,loantype_id, loa
             is_active = is_active,
         )
 
+        try:
+            log_audit_trail(request.user.id,'Loan Application Registration', instance, 'Create', 'Object Created.')
+        except Exception as e:
+            return error(f"An error occurred: {e}")
+
 
         return success(f'Successfully created {instance}')
     except Company.DoesNotExist:
@@ -457,6 +515,13 @@ def update_loanapplication(loanapplication_id,company_id, customer_id,disburseme
         instance.description = description if description is not None else instance.description
         instance.is_active = is_active if is_active is not None else instance.is_active
         instance.save()
+
+        try:
+            log_audit_trail(request.user.id,'Loan Application Registration', instance, 'Update', 'Object Updated.')
+        except Exception as e:
+            return error(f"An error occurred: {e}")
+
+
         return success('Successfully Updated')
     except Company.DoesNotExist:
         return error('Invalid Company ID: Destination not found.')
@@ -521,6 +586,13 @@ def delete_loanapplication(loanapplication_id):
         
         instance = LoanApplication.objects.get(pk=loanapplication_id)
         instance.delete()
+
+        try:
+            log_audit_trail(request.user.id,'Loan Application Registration', instance, 'Delete', 'Object Deleted.')
+        except Exception as e:
+            return error(f"An error occurred: {e}")
+
+
         return success("Successfully deleted")
     
     except LoanApplication.DoesNotExist:
@@ -777,6 +849,14 @@ def create_loan(loanapp_id):
             workflow_stats = "Approved",
 
         )
+
+        try:
+            log_audit_trail(request.user.id,'Loan Registration', instance, 'Create', 'Object Created.')
+        except Exception as e:
+            return error(f"An error occurred: {e}")
+
+
+
         return success(instance.id)
     except Company.DoesNotExist:
         return error('Invalid Company ID: Destination not found.')
@@ -879,6 +959,12 @@ def create_loanagreement(company_id,loan_id, loanapp_id, customer_id, agreement_
         loanapp.save()
         loan.save()
 
+        try:
+            log_audit_trail(request.user.id,'Loan Agreement Registration', instance, 'Create', 'Object Created.')
+        except Exception as e:
+            return error(f"An error occurred: {e}")
+
+
         return success(f'Successfully created {instance}')
     except Company.DoesNotExist:
         return error('Invalid Company ID: Destination not found.')
@@ -938,6 +1024,13 @@ def update_loanagreement(loanagreement_id,company_id,is_active=False, loanapp_id
         instance.lender_signature = attachment1 if attachment1 is not None else instance.lender_signature
         instance.is_active = is_active
         instance.save()
+
+        try:
+            log_audit_trail(request.user.id,'Loan Application Agreement', instance, 'Update', 'Object Updated.')
+        except Exception as e:
+            return error(f"An error occurred: {e}")
+
+
         return success('Successfully Updated')
     except Company.DoesNotExist:
         return error('Invalid Company ID: Destination not found.')
@@ -1027,6 +1120,13 @@ def delete_loanagreement(loanagreement_id):
         
         instance = LoanAgreement.objects.get(pk=loanagreement_id)
         instance.delete()
+
+        try:
+            log_audit_trail(request.user.id,'Loan Application Agreement', instance, 'Delete', 'Object Deleted.')
+        except Exception as e:
+            return error(f"An error occurred: {e}")
+
+
         return success("Successfully deleted")
     
     except LoanAgreement.DoesNotExist:
@@ -1113,6 +1213,13 @@ def create_disbursement(company_id, customer_id,loan_id, loan_application_id, am
         loan.disbursement_amount = amount
         loanapp.save()
         loan.save()
+
+        try:
+            log_audit_trail(request.user.id,'Disbursement Registration', instance, 'Create', 'Object Created.')
+        except Exception as e:
+            return error(f"An error occurred: {e}")
+
+        
         return success(f'Successfully created disbursement {instance}')
     
     except Company.DoesNotExist:
@@ -1130,6 +1237,11 @@ def create_disbursement(company_id, customer_id,loan_id, loan_application_id, am
 
 def update_disbursement(disbursement_id, company_id, customer_id,loan_id, loan_application_id, amount, disbursement_type, disbursement_status,disbursement_method,currency_id,bank=None,notes=None):
     try:
+        request = get_current_request()
+        if not request.user.is_authenticated:
+            return error('Login required')
+      
+      
         instance = Disbursement.objects.get(pk=disbursement_id)
 
         # Validate foreign keys
@@ -1156,6 +1268,12 @@ def update_disbursement(disbursement_id, company_id, customer_id,loan_id, loan_a
         instance.notes = notes if notes is not None else instance.notes
         
         instance.save()
+
+        try:
+            log_audit_trail(request.user.id,'Disbursement Registration', instance, 'Update', 'Object Updated.')
+        except Exception as e:
+            return error(f"An error occurred: {e}")
+        
         return success('Successfully updated disbursement')
     
     except Disbursement.DoesNotExist:
@@ -1194,8 +1312,19 @@ def view_disbursement(disbursement_id=None, company_id=None):
 
 def delete_disbursement(disbursement_id):
     try:
+        request = get_current_request()
+        if not request.user.is_authenticated:
+            return error('Login required')
+        
         instance = Disbursement.objects.get(pk=disbursement_id)
         instance.delete()
+
+        try:
+            log_audit_trail(request.user.id,'Disbursement Registration', instance, 'Delete', 'Object Deleted.')
+        except Exception as e:
+            return error(f"An error occurred: {e}")
+
+
         return success("Successfully deleted disbursement")
 
     except Disbursement.DoesNotExist:
@@ -1264,6 +1393,13 @@ def create_collaterals(company_id, loanapp_id, customer_id, collateral_type_id, 
             collateral_status=collateral_status,
             insurance_status=insurance_status,
         )
+
+        try:
+            log_audit_trail(request.user.id,'Collaterals Registration', instance, 'Create', 'Object Created.')
+        except Exception as e:
+            return error(f"An error occurred: {e}")
+
+
         return success(f'Successfully created {instance}')
     except Company.DoesNotExist:
         return error('Invalid Company ID: Destination not found.')
@@ -1280,6 +1416,10 @@ def create_collaterals(company_id, loanapp_id, customer_id, collateral_type_id, 
 
 def upload_collateraldocument(company_id,loanapplication_id,document_name,attachment=None,desctioption=None):
     try:
+        request = get_current_request()
+        if not request.user.is_authenticated:
+            return error('Login required')
+
         Company.objects.get(pk=company_id)
         LoanApplication.objects.get(pk=loanapplication_id)
 
@@ -1290,6 +1430,7 @@ def upload_collateraldocument(company_id,loanapplication_id,document_name,attach
             additional_documents = attachment,
             description = desctioption,
         )
+
         return success(f'Successfully created {instance}')
     except Company.DoesNotExist:
         return error('Invalid Company ID: Company not found.')
@@ -1336,6 +1477,13 @@ def update_collaterals(collaterals_id,company_id=None, collateral_id=None, loana
         instance.collateral_status = collateral_status if collateral_status is not None else instance.collateral_status
         instance.insurance_status = insurance_status if insurance_status is not None else instance.insurance_status
         instance.save()
+
+        try:
+            log_audit_trail(request.user.id,'Collaterals Registration', instance, 'Update', 'Object Updated.')
+        except Exception as e:
+            return error(f"An error occurred: {e}")
+
+
         return success('Successfully Updated')
     except Company.DoesNotExist:
         return error('Invalid Company ID: Destination not found.')
@@ -1387,6 +1535,13 @@ def delete_collaterals(collaterals_id):
         
         instance = Collaterals.objects.get(pk=collaterals_id)
         instance.delete()
+
+        try:
+            log_audit_trail(request.user.id,'Collaterals Registration', instance, 'Delete', 'Object Deleted.')
+        except Exception as e:
+            return error(f"An error occurred: {e}")
+
+
         return success("Successfully deleted")
     
     except Collaterals.DoesNotExist:
@@ -1432,6 +1587,11 @@ def verify_collateral(collateral_id):
 
 def create_payment(company_id,loanid, amount, payment_method_id, transaction_reference=None):
     try:
+        request = get_current_request()
+        if not request.user.is_authenticated:
+            return error('Login required')
+
+
         company = Company.objects.get(pk=company_id)
         payment_method = PaymentMethod.objects.get(pk=payment_method_id)
         loan = Loan.objects.get(pk = loanid)
@@ -1455,6 +1615,12 @@ def create_payment(company_id,loanid, amount, payment_method_id, transaction_ref
 
         loan.paid_amount = float(loan.paid_amount) + float(amount)
         loan.save()
+
+        try:
+            log_audit_trail(request.user.id,'Payment Registration', payment, 'Create', 'Object Created.')
+        except Exception as e:
+            return error(f"An error occurred: {e}")
+
 
         return success(f"Payment created successfully with ID: {payment.payment_id}")
 
@@ -1490,6 +1656,10 @@ def view_payment(payment_id=None, company_id=None):
 
 def update_payment(payment_id, company_id=None, loanapp_id=None, amount=None, payment_method_id=None, transaction_reference=None):
     try:
+        request = get_current_request()
+        if not request.user.is_authenticated:
+            return error('Login required')
+
         payment = Payments.objects.get(pk=payment_id)
 
         if company_id:
@@ -1504,6 +1674,13 @@ def update_payment(payment_id, company_id=None, loanapp_id=None, amount=None, pa
             payment.transaction_refference = transaction_reference
 
         payment.save()
+
+        try:
+            log_audit_trail(request.user.id,'Payment Registration', payment, 'Update', 'Object Updated.')
+        except Exception as e:
+            return error(f"An error occurred: {e}")
+
+
         return success("Payment updated successfully")
 
     except Payments.DoesNotExist:
@@ -1519,8 +1696,19 @@ def update_payment(payment_id, company_id=None, loanapp_id=None, amount=None, pa
 
 def delete_payment(payment_id):
     try:
+        request = get_current_request()
+        if not request.user.is_authenticated:
+            return error('Login required')
+
         payment = Payments.objects.get(pk=payment_id)
         payment.delete()
+
+        try:
+            log_audit_trail(request.user.id,'Payment Registration', payment, 'Delete', 'Object Deleted.')
+        except Exception as e:
+            return error(f"An error occurred: {e}")
+
+
         return success(f"Payment with ID {payment_id} deleted successfully")
 
     except Payments.DoesNotExist:
@@ -1530,6 +1718,11 @@ def delete_payment(payment_id):
 
 def create_penalties(company_id, loanapp_id, repaymentschedule_id, penalty_amount, penalty_reason, payment_status, transaction_reference=None):
     try:
+        request = get_current_request()
+        if not request.user.is_authenticated:
+            return error('Login required')
+
+
         company = Company.objects.get(pk=company_id)
         loan_application = LoanApplication.objects.get(pk=loanapp_id)
         repayment_schedule = RepaymentSchedule.objects.get(pk=repaymentschedule_id)
@@ -1552,6 +1745,12 @@ def create_penalties(company_id, loanapp_id, repaymentschedule_id, penalty_amoun
             payment_status=payment_status,
             transaction_refference=transaction_reference
         )
+
+        try:
+            log_audit_trail(request.user.id,'penalty Registration', penalty, 'Create', 'Object Created.')
+        except Exception as e:
+            return error(f"An error occurred: {e}")
+
         return success(f"Penalty created successfully with ID: {penalty.penalty_id}")
 
     except Company.DoesNotExist:
@@ -1586,6 +1785,10 @@ def view_penalties(penalty_id=None, company_id=None):
 
 def update_penalties(penalty_id, company_id=None, loanapp_id=None, repaymentschedule_id=None, penalty_amount=None, penalty_reason=None, payment_status=None, transaction_reference=None):
     try:
+        request = get_current_request()
+        if not request.user.is_authenticated:
+            return error('Login required')
+        
         penalty = Penalties.objects.get(pk=penalty_id)
 
         if company_id:
@@ -1604,6 +1807,13 @@ def update_penalties(penalty_id, company_id=None, loanapp_id=None, repaymentsche
             penalty.transaction_refference = transaction_reference
 
         penalty.save()
+
+        try:
+            log_audit_trail(request.user.id,'penalty Registration', penalty, 'Update', 'Object Updated.')
+        except Exception as e:
+            return error(f"An error occurred: {e}")
+
+        
         return success("Penalty updated successfully")
 
     except Penalties.DoesNotExist:
@@ -1619,8 +1829,18 @@ def update_penalties(penalty_id, company_id=None, loanapp_id=None, repaymentsche
 
 def delete_penalties(penalty_id):
     try:
+        request = get_current_request()
+        if not request.user.is_authenticated:
+            return error('Login required')
+        
         penalty = Penalties.objects.get(pk=penalty_id)
         penalty.delete()
+        try:
+            log_audit_trail(request.user.id,'penalty Registration', penalty, 'Delete', 'Object Deleted.')
+        except Exception as e:
+            return error(f"An error occurred: {e}")
+
+        
         return success(f"Penalty with ID {penalty_id} deleted successfully")
 
     except Penalties.DoesNotExist:
@@ -1631,6 +1851,10 @@ def delete_penalties(penalty_id):
 
 def create_loan_closure(company_id, loanapp_id, closure_date, closure_amount, remaining_balance, closure_method, closure_reason, transaction_reference=None):
     try:
+        request = get_current_request()
+        if not request.user.is_authenticated:
+            return error('Login required')
+        
         company = Company.objects.get(pk=company_id)
         loan_application = LoanApplication.objects.get(pk=loanapp_id)
 
@@ -1653,6 +1877,12 @@ def create_loan_closure(company_id, loanapp_id, closure_date, closure_amount, re
             closure_reason=closure_reason,
             transaction_refference=transaction_reference
         )
+        try:
+            log_audit_trail(request.user.id,'penalty Registration', closure, 'Create', 'Object Created.')
+        except Exception as e:
+            return error(f"An error occurred: {e}")
+
+        
         return success(f"Loan closure created successfully with ID: {closure.closure_id}")
 
     except Company.DoesNotExist:
@@ -1686,6 +1916,11 @@ def view_loan_closure(closure_id=None, company_id=None):
 
 def update_loan_closure(closure_id, company_id=None, loanapp_id=None, closure_date=None, closure_amount=None, remaining_balance=None, closure_method=None, closure_reason=None, transaction_reference=None):
     try:
+
+        request = get_current_request()
+        if not request.user.is_authenticated:
+            return error('Login required')
+
         closure = LoanClosure.objects.get(pk=closure_id)
 
         if company_id:
@@ -1706,6 +1941,14 @@ def update_loan_closure(closure_id, company_id=None, loanapp_id=None, closure_da
             closure.transaction_refference = transaction_reference
 
         closure.save()
+
+        try:
+            log_audit_trail(request.user.id,'closure Registration', closure, 'Update', 'Object Updated.')
+        except Exception as e:
+            return error(f"An error occurred: {e}")
+
+
+
         return success("Loan closure updated successfully")
 
     except LoanClosure.DoesNotExist:
@@ -1719,8 +1962,18 @@ def update_loan_closure(closure_id, company_id=None, loanapp_id=None, closure_da
 
 def delete_loan_closure(closure_id):
     try:
+        request = get_current_request()
+        if not request.user.is_authenticated:
+            return error('Login required')
+        
         closure = LoanClosure.objects.get(pk=closure_id)
         closure.delete()
+
+        try:
+            log_audit_trail(request.user.id,'closure Registration', closure, 'Delete', 'Object Deleted.')
+        except Exception as e:
+            return error(f"An error occurred: {e}")
+
         return success(f"Loan closure with ID {closure_id} deleted successfully")
 
     except LoanClosure.DoesNotExist:
@@ -1731,6 +1984,10 @@ def delete_loan_closure(closure_id):
 
 def create_support_ticket(company_id, customer_id, subject=None, description=None, status='Open', priority='Low', assigned_to=None, resolution=None, resolution_date=None):
     try:
+        request = get_current_request()
+        if not request.user.is_authenticated:
+            return error('Login required')
+        
         company = Company.objects.get(pk=company_id)
         customer = Customer.objects.get(pk=customer_id)
 
@@ -1754,6 +2011,12 @@ def create_support_ticket(company_id, customer_id, subject=None, description=Non
             resolution=resolution,
             resolution_date=resolution_date
         )
+        try:
+            log_audit_trail(request.user.id,'Ticket Registration', ticket, 'Create', 'Object Created.')
+        except Exception as e:
+            return error(f"An error occurred: {e}")
+
+        
         return success(f"Support ticket created successfully with ID: {ticket.ticket_id}")
 
     except Company.DoesNotExist:
@@ -1786,6 +2049,10 @@ def view_support_ticket(ticket_id=None, company_id=None):
 
 def update_support_ticket(ticket_id, company_id=None, customer_id=None, subject=None, description=None, status=None, priority=None, assigned_to=None, resolution=None, resolution_date=None):
     try:
+        request = get_current_request()
+        if not request.user.is_authenticated:
+            return error('Login required')
+        
         ticket = SupportTickets.objects.get(pk=ticket_id)
 
         if company_id:
@@ -1808,6 +2075,12 @@ def update_support_ticket(ticket_id, company_id=None, customer_id=None, subject=
             ticket.resolution_date = resolution_date
 
         ticket.save()
+        try:
+            log_audit_trail(request.user.id,'Ticket Registration', ticket, 'Update', 'Object Updated.')
+        except Exception as e:
+            return error(f"An error occurred: {e}")
+
+        
         return success("Support ticket updated successfully")
 
     except SupportTickets.DoesNotExist:
@@ -1821,8 +2094,18 @@ def update_support_ticket(ticket_id, company_id=None, customer_id=None, subject=
 
 def delete_support_ticket(ticket_id):
     try:
+        request = get_current_request()
+        if not request.user.is_authenticated:
+            return error('Login required')
+        
         ticket = SupportTickets.objects.get(pk=ticket_id)
         ticket.delete()
+        try:
+            log_audit_trail(request.user.id,'Ticket Registration', ticket, 'delete', 'Object deleted.')
+        except Exception as e:
+            return error(f"An error occurred: {e}")
+
+        
         return success(f"Support ticket with ID {ticket_id} deleted successfully")
 
     except SupportTickets.DoesNotExist:
@@ -1832,6 +2115,10 @@ def delete_support_ticket(ticket_id):
 
 def create_customer_feedback(customer_id, feedback_date, feedback_type, subject, description=None, feedback_status='Open'):
     try:
+        request = get_current_request()
+        if not request.user.is_authenticated:
+            return error('Login required')
+
         customer = Customer.objects.get(pk=customer_id)
 
         # Generate a unique feedback ID
@@ -1851,6 +2138,12 @@ def create_customer_feedback(customer_id, feedback_date, feedback_type, subject,
             description=description,
             feedback_status=feedback_status
         )
+        try:
+            log_audit_trail(request.user.id,'Customer Feedback Registration', feedback, 'Create', 'Object Created.')
+        except Exception as e:
+            return error(f"An error occurred: {e}")
+
+        
         return success(f"Customer feedback created successfully with ID: {feedback.feedback_id}")
 
     except Customer.DoesNotExist:
@@ -1881,6 +2174,12 @@ def view_customer_feedback(feedback_id=None, customer_id=None):
 
 def update_customer_feedback(feedback_id, customer_id=None, feedback_date=None, feedback_type=None, subject=None, description=None, feedback_status=None):
     try:
+
+        request = get_current_request()
+        if not request.user.is_authenticated:
+            return error('Login required')
+
+
         feedback = CustomerFeedBack.objects.get(pk=feedback_id)
 
         if customer_id:
@@ -1897,6 +2196,13 @@ def update_customer_feedback(feedback_id, customer_id=None, feedback_date=None, 
             feedback.feedback_status = feedback_status
 
         feedback.save()
+
+        try:
+            log_audit_trail(request.user.id,'Customer Feedback Registration', feedback, 'Update', 'Object Updated.')
+        except Exception as e:
+            return error(f"An error occurred: {e}")
+
+
         return success("Customer feedback updated successfully")
 
     except CustomerFeedBack.DoesNotExist:
@@ -1908,8 +2214,20 @@ def update_customer_feedback(feedback_id, customer_id=None, feedback_date=None, 
 
 def delete_customer_feedback(feedback_id):
     try:
+        request = get_current_request()
+        if not request.user.is_authenticated:
+            return error('Login required')
+
+
         feedback = CustomerFeedBack.objects.get(pk=feedback_id)
         feedback.delete()
+
+        try:
+            log_audit_trail(request.user.id,'Customer Feedback Registration', feedback, 'Create', 'Object Created.')
+        except Exception as e:
+            return error(f"An error occurred: {e}")
+
+
         return success(f"Customer feedback with ID {feedback_id} deleted successfully")
 
     except CustomerFeedBack.DoesNotExist:
@@ -1983,6 +2301,12 @@ def create_identificationtype(company_id,type_name, description, is_active):
             description = description,
             is_active = is_active,
         )
+        try:
+            log_audit_trail(request.user.id,'IdentificationType Registration', instance, 'Create', 'Object Created.')
+        except Exception as e:
+            return error(f"An error occurred: {e}")
+
+
         return success(f'Successfully created {instance}')
     except ValidationError as e:
         print(f"Validation Error: {e}")
@@ -2002,6 +2326,13 @@ def update_identificationtype(identificationtype_id,type_name=None, description=
         instance.description = description if description is not None else instance.description
         instance.is_active = is_active if is_active is not None else instance.is_active
         instance.save()
+
+        try:
+            log_audit_trail(request.user.id,'IdentificationType Registration', instance, 'Update', 'Object Updated.')
+        except Exception as e:
+            return error(f"An error occurred: {e}")
+
+
         return success('Successfully Updated')
     except  IdentificationType.DoesNotExist:
         return error('Instance does not exist')
@@ -2040,6 +2371,12 @@ def delete_identificationtype(identificationtype_id):
             return error('Login required')
         instance = IdentificationType.objects.get(pk=identificationtype_id)
         instance.delete()
+        try:
+            log_audit_trail(request.user.id,'IdentificationType Registration', instance, 'delete', 'Object deleted.')
+        except Exception as e:
+            return error(f"An error occurred: {e}")
+
+
         return success("Successfully deleted")
     
     except IdentificationType.DoesNotExist:
@@ -2079,6 +2416,11 @@ def create_loantype(company_id,loantype,disbursement_beneficiary=None,interest_r
             charges = charges, # Any associated fees like processing or administration fees.
             is_active = is_active,
             )
+        try:
+            log_audit_trail(request.user.id,'LoanType Registration', instance, 'Create', 'Object Created.')
+        except Exception as e:
+            return error(f"An error occurred: {e}")
+        
         return success(f'Successfully created {instance}')
     except Company.DoesNotExist:
         return error('Invalid Company ID: Destination not found.')
@@ -2111,6 +2453,11 @@ def update_loantype(company_id,loantype_id,loantype,disbursement_beneficiary=Non
         instance.charges = charges if charges is not None else instance.charges
         instance.is_active = is_active if is_active is not None else instance.is_active
         instance.save()
+        try:
+            log_audit_trail(request.user.id,'LoanType Registration', instance, 'Update', 'Object Updated.')
+        except Exception as e:
+            return error(f"An error occurred: {e}")
+        
         return success('Successfully Updated')
     except Company.DoesNotExist:
         return error('Invalid Company ID: Destination not found.')
@@ -2149,6 +2496,13 @@ def delete_loantype(loantype_id):
         
         instance = LoanType.objects.get(pk=loantype_id)
         instance.delete()
+
+        try:
+            log_audit_trail(request.user.id,'LoanType Registration', instance, 'delete', 'Object deleted.')
+        except Exception as e:
+            return error(f"An error occurred: {e}")
+
+
         return success("Successfully deleted")
     
     except LoanType.DoesNotExist:
@@ -2171,6 +2525,12 @@ def create_collateraltype(company_id,name, description,category):
             description=description,
             category = category,
         )
+        try:
+            log_audit_trail(request.user.id,'CollateralType Registration', instance, 'Create', 'Object Created.')
+        except Exception as e:
+            return error(f"An error occurred: {e}")
+
+
         return success(f'Successfully created {instance}')
     except ValidationError as e:
         return error(f"Validation Error: {e}")
@@ -2188,6 +2548,12 @@ def update_collateraltype(company_id,collateraltype_id,name=None, description=No
         instance.description = description if description is not None else instance.description
         instance.category = category if category is not None else instance.category
         instance.save()
+        try:
+            log_audit_trail(request.user.id,'CollateralType Registration', instance, 'Update', 'Object Updated.')
+        except Exception as e:
+            return error(f"An error occurred: {e}")
+
+
         return success('Successfully Updated')
     except  CollateralType.DoesNotExist:
         return error('Instance does not exist')
@@ -2228,6 +2594,12 @@ def delete_collateraltype(collateraltype_id):
         
         instance = CollateralType.objects.get(pk=collateraltype_id)
         instance.delete()
+
+        try:
+            log_audit_trail(request.user.id,'CollateralType Registration', instance, 'delete', 'Object deleted.')
+        except Exception as e:
+            return error(f"An error occurred: {e}")
+
         return success("Successfully deleted")
     
     except CollateralType.DoesNotExist:
@@ -2248,6 +2620,13 @@ def create_paymentmethod(company_id,method_name, description, is_active):
             description=description,
             is_active=is_active,
         )
+
+        try:
+            log_audit_trail(request.user.id,'PaymentMethod Registration', instance, 'Create', 'Object Created.')
+        except Exception as e:
+            return error(f"An error occurred: {e}")
+
+
         return success(f'Successfully created {instance}')
     except ValidationError as e:
         return error(f"Validation Error: {e}")
@@ -2265,6 +2644,13 @@ def update_paymentmethod(paymentmethod_id,company_id,method_name=None, descripti
         instance.description = description if description is not None else instance.description
         instance.is_active = is_active
         instance.save()
+
+        try:
+            log_audit_trail(request.user.id,'PaymentMethod Registration', instance, 'Update', 'Object Updated.')
+        except Exception as e:
+            return error(f"An error occurred: {e}")
+
+
         return success('Successfully Updated')
     except  PaymentMethod.DoesNotExist:
         return error('Instance does not exist')
@@ -2305,6 +2691,12 @@ def delete_paymentmethod(paymentmethod_id):
         
         instance = PaymentMethod.objects.get(pk=paymentmethod_id)
         instance.delete()
+
+        try:
+            log_audit_trail(request.user.id,'PaymentMethod Registration', instance, 'delete', 'Object deleted.')
+        except Exception as e:
+            return error(f"An error occurred: {e}")
+
         return success("Successfully deleted")
     
     except PaymentMethod.DoesNotExist:
@@ -2327,6 +2719,12 @@ def create_currency(company_id,code, name, symbol, exchange_rate, is_active=Fals
             exchange_rate = exchange_rate,
             is_active=is_active,
         )
+
+        try:
+            log_audit_trail(request.user.id,'Currency Registration', instance, 'Create', 'Object Created.')
+        except Exception as e:
+            return error(f"An error occurred: {e}")
+
         return success(f'Successfully created {instance}')
     except ValidationError as e:
         return error(f"Validation Error: {e}")
@@ -2346,6 +2744,11 @@ def update_currency(company_id,currency_id,code=None, name=None, symbol=None, ex
         instance.exchange_rate = exchange_rate if exchange_rate is not None else instance.exchange_rate
         instance.is_active = is_active
         instance.save()
+        try:
+            log_audit_trail(request.user.id,'Currency Registration', instance, 'Update', 'Object Updated.')
+        except Exception as e:
+            return error(f"An error occurred: {e}")
+        
         return success('Successfully Updated')
     except  Currency.DoesNotExist:
         return error('Instance does not exist')
@@ -2386,6 +2789,11 @@ def delete_currency(currency_id):
         
         instance = Currency.objects.get(pk=currency_id)
         instance.delete()
+        try:
+            log_audit_trail(request.user.id,'Currency Registration', instance, 'delete', 'Object deleted.')
+        except Exception as e:
+            return error(f"An error occurred: {e}")
+        
         return success("Successfully deleted")
     
     except Currency.DoesNotExist:
@@ -2410,6 +2818,12 @@ def create_bank_account(company_id,account_number, account_holder_name, bank_nam
             swift_code=swift_code,
             ifsc_code=ifsc_code
         )
+        try:
+            log_audit_trail(request.user.id,'BankAccount Registration', bank_account, 'Create', 'Object Created.')
+        except Exception as e:
+            return error(f"An error occurred: {e}")
+        
+
         return success(f"Bank account created successfully with ID: {bank_account.id}")
     
     except ValidationError as e:
@@ -2458,6 +2872,12 @@ def update_bank_account(bank_id,company_id,account_number, account_holder_name=N
         bank_account.ifsc_code = ifsc_code if ifsc_code else bank_account.ifsc_code
         
         bank_account.save()
+        try:
+            log_audit_trail(request.user.id,'BankAccount Registration', bank_account, 'Update', 'Object Updated.')
+        except Exception as e:
+            return error(f"An error occurred: {e}")
+
+
         return success(f"Bank account updated successfully with ID: {bank_account.id}")
     
     except BankAccount.DoesNotExist:
@@ -2478,6 +2898,11 @@ def delete_bank_account(back_id,account_number=None):
         else:
             bank_account = BankAccount.objects.get(id=back_id)
             bank_account.delete()
+        try:
+            log_audit_trail(request.user.id,'BankAccount Registration', bank_account, 'delete', 'Object deleted.')
+        except Exception as e:
+            return error(f"An error occurred: {e}")
+
 
         return success(f"Bank account with number {account_number} deleted successfully")
     
@@ -2512,6 +2937,12 @@ def create_creditscores(company_id, customer_id, credit_score, retrieved_at):
             credit_score=credit_score,
             retrieved_at=retrieved_at,
         )
+        try:
+            log_audit_trail(request.user.id,'Creditscores Registration', instance, 'Create', 'Object Created.')
+        except Exception as e:
+            return error(f"An error occurred: {e}")
+
+
         return success(f'Successfully created {instance}')
     except Company.DoesNotExist:
         return error('Invalid Company ID: Destination not found.')
@@ -2540,6 +2971,12 @@ def update_creditscores(creditscores_id,company_id=None, scores_id=None, custome
         instance.credit_score = credit_score if credit_score is not None else instance.credit_score
         instance.retrieved_at = retrieved_at if retrieved_at is not None else instance.retrieved_at
         instance.save()
+
+        try:
+            log_audit_trail(request.user.id,'Creditscores Registration', instance, 'Create', 'Object Created.')
+        except Exception as e:
+            return error(f"An error occurred: {e}")
+
         return success('Successfully Updated')
     except Company.DoesNotExist:
         return error('Invalid Company ID: Destination not found.')
@@ -2584,6 +3021,12 @@ def delete_creditscores(creditscores_id):
         
         instance = Creditscores.objects.get(pk=creditscores_id)
         instance.delete()
+        try:
+            log_audit_trail(request.user.id,'Creditscores Registration', instance, 'delete', 'Object deleted.')
+        except Exception as e:
+            return error(f"An error occurred: {e}")
+
+
         return success("Successfully deleted")
     
     except Creditscores.DoesNotExist:
@@ -2594,6 +3037,10 @@ def delete_creditscores(creditscores_id):
 
 def create_loan_offer(company_id, application_id, loanamount, interest_rate, tenure, monthly_instalment, terms_condition=None, offer_status='Pending'):
     try:
+        request = get_current_request()
+        if not request.user.is_authenticated:
+            return error('Login required')
+
         company = Company.objects.get(pk=company_id)
         application = LoanApplication.objects.get(pk=application_id)
 
@@ -2616,6 +3063,12 @@ def create_loan_offer(company_id, application_id, loanamount, interest_rate, ten
             terms_condition=terms_condition,
             offer_status=offer_status
         )
+
+        try:
+            log_audit_trail(request.user.id,'LoanOffer Registration', offer, 'Create', 'Object Created.')
+        except Exception as e:
+            return error(f"An error occurred: {e}")
+
         return success(f"Loan offer created successfully with ID: {offer.offer_id}")
 
     except Company.DoesNotExist:
@@ -2651,6 +3104,11 @@ def view_loan_offer(offer_id=None, application_id=None, company_id=None):
 
 def update_loan_offer(offer_id, company_id=None, application_id=None, loanamount=None, interest_rate=None, tenure=None, monthly_instalment=None, terms_condition=None, offer_status=None):
     try:
+        request = get_current_request()
+        if not request.user.is_authenticated:
+            return error('Login required')
+
+
         offer = LoanOffer.objects.get(pk=offer_id)
 
         if company_id:
@@ -2671,6 +3129,12 @@ def update_loan_offer(offer_id, company_id=None, application_id=None, loanamount
             offer.offer_status = offer_status
 
         offer.save()
+        try:
+            log_audit_trail(request.user.id,'LoanOffer Registration', offer, 'Update', 'Object Updated.')
+        except Exception as e:
+            return error(f"An error occurred: {e}")
+
+
         return success("Loan offer updated successfully")
 
     except LoanOffer.DoesNotExist:
@@ -2684,8 +3148,18 @@ def update_loan_offer(offer_id, company_id=None, application_id=None, loanamount
 
 def delete_loan_offer(offer_id):
     try:
+        request = get_current_request()
+        if not request.user.is_authenticated:
+            return error('Login required')
+
         offer = LoanOffer.objects.get(pk=offer_id)
         offer.delete()
+        try:
+            log_audit_trail(request.user.id,'LoanOffer Registration', offer, 'delete', 'Object deleted.')
+        except Exception as e:
+            return error(f"An error occurred: {e}")
+
+
         return success(f"Loan offer with ID {offer_id} deleted successfully")
 
     except LoanOffer.DoesNotExist:
@@ -2696,6 +3170,11 @@ def delete_loan_offer(offer_id):
 
 def create_repayment_schedule(company_id, loan_application_id, repayment_date, instalment_amount, principal_amount, interest_amount, remaining_balance, repayment_status, payment_method_id, transaction_id=None, notes=None):
     try:
+        request = get_current_request()
+        if not request.user.is_authenticated:
+            return error('Login required')
+
+
         company = Company.objects.get(pk=company_id)
         loan_application = LoanApplication.objects.get(pk=loan_application_id)
         payment_method = PaymentMethod.objects.get(pk=payment_method_id)
@@ -2714,6 +3193,12 @@ def create_repayment_schedule(company_id, loan_application_id, repayment_date, i
             transaction_id=transaction_id,
             notes=notes
         )
+        try:
+            log_audit_trail(request.user.id,'RepaymentSchedule Registration', repayment_schedule, 'Create', 'Object Created.')
+        except Exception as e:
+            return error(f"An error occurred: {e}")
+
+
         return success(f"Repayment schedule created successfully with ID: {repayment_schedule.id}")
 
     except Company.DoesNotExist:
@@ -2748,6 +3233,10 @@ def view_repayment_schedule(repayment_schedule_id=None, company_id=None):
 
 def update_repayment_schedule(repayment_schedule_id, company_id=None, loan_application_id=None, repayment_date=None, instalment_amount=None, principal_amount=None, interest_amount=None, remaining_balance=None, repayment_status=None, payment_method_id=None, transaction_id=None, notes=None):
     try:
+        request = get_current_request()
+        if not request.user.is_authenticated:
+            return error('Login required')
+
         repayment_schedule = RepaymentSchedule.objects.get(pk=repayment_schedule_id)
 
         if company_id:
@@ -2774,6 +3263,10 @@ def update_repayment_schedule(repayment_schedule_id, company_id=None, loan_appli
             repayment_schedule.notes = notes
 
         repayment_schedule.save()
+        try:
+            log_audit_trail(request.user.id,'RepaymentSchedule Registration', repayment_schedule, 'Update', 'Object Updated.')
+        except Exception as e:
+            return error(f"An error occurred: {e}")
         return success("Repayment schedule updated successfully")
 
     except RepaymentSchedule.DoesNotExist:
@@ -2789,8 +3282,17 @@ def update_repayment_schedule(repayment_schedule_id, company_id=None, loan_appli
 
 def delete_repayment_schedule(repayment_schedule_id):
     try:
+        request = get_current_request()
+        if not request.user.is_authenticated:
+            return error('Login required')        
         repayment_schedule = RepaymentSchedule.objects.get(pk=repayment_schedule_id)
         repayment_schedule.delete()
+        try:
+            log_audit_trail(request.user.id,'RepaymentSchedule Registration', repayment_schedule, 'delete', 'Object deleted.')
+        except Exception as e:
+            return error(f"An error occurred: {e}")
+
+
         return success(f"Repayment schedule with ID {repayment_schedule_id} deleted successfully")
 
     except RepaymentSchedule.DoesNotExist:
@@ -3233,7 +3735,13 @@ def folder_master_create(folder_name, entity_id, default_folder=False, customer_
             default_folder=default_folder,
             created_by=request.user,
             update_by=request.user
-        )          
+        )  
+        try:
+            log_audit_trail(request.user.id,'FolderMaster Registration', record, 'Create', 'Object Created.')
+        except Exception as e:
+            return error(f"An error occurred: {e}")
+
+
         return success('Folder created successfully')
     except CustomDocumentEntity.DoesNotExist:
         return error('Entity_id is invalid')
@@ -3292,6 +3800,12 @@ def document_category_create(category_name,department_id,description=None):
                 created_by=request.user,
                 update_by=request.user,
             )
+        try:
+            log_audit_trail(request.user.id,'DocumentCategory Registration', record, 'Create', 'Object Created.')
+        except Exception as e:
+            return error(f"An error occurred: {e}")
+    
+    
         return success('Document type create successfully')
     except Exception as e:
         return error(e)
@@ -3308,6 +3822,12 @@ def department_create(department_name,description=None):
                 created_by=request.user,
                 update_by=request.user,
             )
+        try:
+            log_audit_trail(request.user.id,'Department Registration', record, 'Create', 'Object Created.')
+        except Exception as e:
+            return error(f"An error occurred: {e}")
+
+
         return success('Document type create successfully')
     except Exception as e:
         return error(e)
@@ -3327,6 +3847,12 @@ def entity_master_create(entity_id,entity_name,entity_type,description=None,db_i
                 created_by=request.user,
                 update_by=request.user,
             )
+        try:
+            log_audit_trail(request.user.id,'CustomDocumentEntity Registration', record, 'Create', 'Object Created.')
+        except Exception as e:
+            return error(f"An error occurred: {e}")
+        
+
         return success('Custom entity create successfully')
     except Exception as e:
         return error(e)    
@@ -3344,6 +3870,12 @@ def document_type_create(document_type_name,short_name,description=None):
                 created_by=request.user,
                 update_by=request.user,
             )
+        try:
+            log_audit_trail(request.user.id,'DocumentType Registration', record, 'Create', 'Object Created.')
+        except Exception as e:
+            return error(f"An error occurred: {e}")
+        
+
         return success('Document type create successfully')
     except Exception as e:
         return error(e)
@@ -3389,6 +3921,11 @@ def document_upload(document_title,document_category,document_type,entity_type,d
             entity = CustomDocumentEntity.objects.get(entity_id=data)
             record.entity_type.add(entity)
             record.save()
+        try:
+            log_audit_trail(request.user.id,'DocumentUpload Registration', record, 'Create', 'Object Created.')
+        except Exception as e:
+            return error(f"An error occurred: {e}")
+
         return success('Document uploaded successfully')
     except Exception as e:
         return error(e)   
@@ -3432,6 +3969,9 @@ def document_version(document_id):
 
 def folder_delete(entity_id=None,folder_id=None):
     try:
+        request = get_current_request()
+        if not request.user.is_authenticated:
+            return error('Login requried')          
         if entity_id:
             entity_instance = CustomDocumentEntity.objects.get(entity_id=entity_id)
             #records = FolderMaster.objects.filter(entity=entity_instance,default_folder=True,matter__isnull=True)
@@ -3442,7 +3982,12 @@ def folder_delete(entity_id=None,folder_id=None):
             folder_instance=FolderMaster.objects.get(folder_id=folder_id)
             folder_instance.delete()
             return success('Folder Deleted Sucessfully')
-        
+        try:
+            log_audit_trail(request.user.id,'FolderMaster Registration', folder_instance, 'delete', 'Object deleted.')
+        except Exception as e:
+            return error(f"An error occurred: {e}")
+
+
     except CustomDocumentEntity.DoesNotExist:
         return error('Entity_id is invalid')
     except Exception as e:
@@ -3461,6 +4006,10 @@ def document_delete(document_id):
         print("document_delete---",document_delete)
         obj.delete()
     
+        try:
+            log_audit_trail(request.user.id,'DocumentUpload Registration', obj, 'delete', 'Object deleted.')
+        except Exception as e:
+            return error(f"An error occurred: {e}")
      
         return success('Deleted Successfully')
     except DocumentUpload.DoesNotExist:
