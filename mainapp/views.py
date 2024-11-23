@@ -210,7 +210,7 @@ def login_view(request):
     password = request.data.get('password')
 
     user = authenticate(email=email, password=password)
-
+    data_list = get_permissions_for_session(user)
     if user is not None:
         # Generate tokens using SimpleJWT
         refresh = RefreshToken.for_user(user)
@@ -221,12 +221,81 @@ def login_view(request):
             'user_data': serializers,
             'access_token': access_token,
             'refresh_token': str(refresh),
-            'multi_factor_auth':user.multi_factor_auth
+            'multi_factor_auth':user.multi_factor_auth,
+            'user_permission':data_list
         }
-        
+         
         return Response(user_data)
     else:
         return Response({'error': 'Invalid credentials'}, status=400)
     
 
 
+def get_permissions_for_session(user):
+    try:
+        
+        # request = get_current_request()        
+        # if not request.user.is_authenticated:
+        #     return error('Login required')
+        if user.is_superuser:
+            records = Function.objects.all()
+            print(user)
+            records_list = [record.function_name for record in records]      
+            
+        else:
+            # Filter permissions based on the user's roles
+            record = UserProfile.objects.get(pk=user.user_profile.id)
+            role_records = record.role.all()
+            records_list = []
+            for role in role_records:
+                permission_records = role.permissions.all()  # Directly use `role`
+                records_list.extend([permission.function_name for permission in permission_records]) 
+
+        print('records_list',records_list)
+        data_list = [{'permission': records_list}]     
+        print('data_list',data_list)   
+        return {'permission': records_list}
+    except Exception as e:
+        return error(str(e))
+
+
+def forgot_password(email):
+    try:
+        user = User.objects.get(email=email)
+        generate_and_send_otp(user)
+        return success("Password changed successfully.")
+    except User.DoesNotExist:
+        return error("User does not exist.")
+    except Exception as e:
+        return error(f"An error occurred: {e}")
+
+def verify_forgot_password(email,otp):
+    try:
+        user = User.objects.get(email=email)
+        otp_record = OTP.objects.filter(user=user,status = 'UNUSED').order_by('-created_at').first()
+        if otp_record.otp != otp:
+            return error('Invalid OTP')
+        otp_record.status = 'USED'
+        otp_record.save()
+
+        return success("OTP Verification successfully.")
+    except User.DoesNotExist:
+        return error("User does not exist.")
+    except OTP.DoesNotExist:
+        return error("User does not exist.")
+    except Exception as e:
+        return error(f"An error occurred: {e}")
+
+def set_password(email,new_password, confirm_password):
+    try:
+        user = User.objects.get(email=email)
+        if new_password != confirm_password:
+            return error("New password and confirm password do not match.")
+        user.password = make_password(new_password)
+        user.save()
+        return success("Password changed successfully.")
+    except User.DoesNotExist:
+        return error("User does not exist.")
+    except Exception as e:
+        return error(f"An error occurred: {e}")
+    

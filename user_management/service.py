@@ -7,7 +7,7 @@ from .serializers import *
 from mainapp.middleware import get_current_request
 from mainapp.scripts import *
 from django.db.models import Q
-from django.contrib.auth.hashers import make_password
+from django.contrib.auth.hashers import make_password,check_password
 from lms_backend.settings import EMAIL,PASSWORD
 
 import uuid
@@ -39,10 +39,64 @@ def get_user(id=None):
         return error('Instance does not exist')
     except Exception as e:
         return error(f"An error occurred: {e}")
+
+def change_password(user_id, old_password, new_password, confirm_password):
+    try:
+        user = User.objects.get(id=user_id)
+        if not check_password(old_password, user.password):
+            return error("Old password is incorrect.")
+        if new_password != confirm_password:
+            return error("New password and confirm password do not match.")
+        user.password = make_password(new_password)
+        user.save()
+        return success("Password changed successfully.")
+    except User.DoesNotExist:
+        return error("User does not exist.")
+    except Exception as e:
+        return error(f"An error occurred: {e}")
+
+
+def forgot_password(email):
+    try:
+        user = User.objects.get(email=email)
+        generate_and_send_otp(user)
+        return success("Password changed successfully.")
+    except User.DoesNotExist:
+        return error("User does not exist.")
+    except Exception as e:
+        return error(f"An error occurred: {e}")
+
+def verify_forgot_password(email,otp):
+    try:
+        user = User.objects.get(email=email)
+        otp_record = OTP.objects.filter(user=user,status = 'UNUSED').order_by('-created_at').first()
+        if otp_record.otp != otp:
+            return error('Invalid OTP')
+        otp_record.status = 'USED'
+        otp_record.save()
+
+        return success("OTP Verification successfully.")
+    except User.DoesNotExist:
+        return error("User does not exist.")
+    except OTP.DoesNotExist:
+        return error("User does not exist.")
+    except Exception as e:
+        return error(f"An error occurred: {e}")
+
+def set_password(email,new_password, confirm_password):
+    try:
+        user = User.objects.get(email=email)
+        if new_password != confirm_password:
+            return error("New password and confirm password do not match.")
+        user.password = make_password(new_password)
+        user.save()
+        return success("Password changed successfully.")
+    except User.DoesNotExist:
+        return error("User does not exist.")
+    except Exception as e:
+        return error(f"An error occurred: {e}")
     
-
 def user_registration(first_name, last_name, email, phone_number, password,user_profile):
-
     try:
         request = get_current_request()
         if not request.user.is_authenticated:
@@ -144,9 +198,7 @@ def role_list(id=None):
         return error('Instance does not exist')
     except Exception as e:
         return error(f"An error occurred: {e}")
-
 def role_create(name, description):
-
     try:
         request = get_current_request()
         if not request.user.is_authenticated:
@@ -254,9 +306,11 @@ def userprofile_edit(id,name,role, description):
         if not request.user.is_authenticated:
             return error('Login required')
         
+        role_instances = Role.objects.filter(id__in=role)
+
         instance = UserProfile.objects.get(pk=id)
         instance.name=name
-        instance.role=role
+        instance.role.set(role_instances)
         instance.description=description
         instance.update_by=request.user
         instance.save()
@@ -387,12 +441,13 @@ def multi_factor_authentication(otp=None):
     return success('OTP verified successfully')
 
 
-def generate_and_send_otp():
-    request = get_current_request()
+def generate_and_send_otp(user=None):
+    if user is None:
+        request = get_current_request()
     
-    if not request.user.is_authenticated:
-        return error('Login required')
-    user = request.user
+        if not request.user.is_authenticated:
+            return error('Login required')
+        user = request.user
     otp_record = OTP.objects.create(user=user)
     otp_code = otp_record.otp
     send_otp_to_user(otp_code)
