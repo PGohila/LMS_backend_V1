@@ -292,6 +292,29 @@ def create_customerdocuments(company_id,customer_id, document_type_id, attachmen
             description = description,
  
         )
+        folder_instance = FolderMaster.objects.filter(customer_id=customer_id, company_id=company_id,folder_name='Common Customer Folder').last()
+        print("Common_Customer_Folder5467", folder_instance)
+        start_date=None
+        end_date=None
+        document_title = attachment.name
+        print("document_title34567898765434",document_title)
+        record = DocumentUpload.objects.create(
+            document_id = unique_id_generate_doc('DID'),
+            company_id=company_id,
+            document_title=document_title,
+            document_type_id=document_type_id,
+            description=description,
+            document_upload=attachment,
+            folder=folder_instance,
+            # upload_date=datetime.now(),
+            start_date=start_date,
+            end_date=end_date,
+            created_by=request.user,
+            update_by=request.user,
+            document_size=attachment.size,
+        )  
+        print("record34567890p",record)      
+        document_upload_history(record.document_id)
 
         try:
             log_audit_trail(request.user.id,'Customer Document Registration', instance, 'Create', 'Object Created.')
@@ -1430,6 +1453,31 @@ def upload_collateraldocument(company_id,loanapplication_id,document_name,attach
             additional_documents = attachment,
             description = desctioption,
         )
+
+        print("instance34567890",instance)
+        folder_instance = FolderMaster.objects.filter(company_id=company_id,folder_name='Collateral Folder List').last()
+        print("folder_instance34567890-54675678", folder_instance)
+        start_date=None
+        end_date=None
+        document_type_id=None
+        record = DocumentUpload.objects.create(
+            document_id = unique_id_generate_doc('DID'),
+            company_id=company_id,
+            document_title=document_name,
+            document_type_id=document_type_id,
+            description=desctioption,
+            document_upload=attachment,
+            folder=folder_instance,
+            # upload_date=datetime.now(),
+            start_date=start_date,
+            end_date=end_date,
+            created_by=request.user,
+            update_by=request.user,
+            document_size=attachment.size,
+        )  
+        print("record34567890p",record)      
+        document_upload_history(record.document_id)
+
 
         return success(f'Successfully created {instance}')
     except Company.DoesNotExist:
@@ -3768,25 +3816,25 @@ def document_category_view(document_category_id=None):
 
 
 
-def department_view(department_id=None):
-    try:
-        if department_id:
-            records = Department.objects.filter(id=department_id)
-            if records.exists():
-                record=records.last()
-                serializer = DepartmentSerializer(record)
-                return success(serializer.data)
-            else:
-                return error('department_id is invalid')
-        else:
-            records = Department.objects.all()
-            serializer = DepartmentSerializer(records,many=True)
-            return success(serializer.data)
-    except Exception as e:
-        return error(e)
+# def department_view(department_id=None):
+#     try:
+#         if department_id:
+#             records = Department.objects.filter(id=department_id)
+#             if records.exists():
+#                 record=records.last()
+#                 serializer = DepartmentSerializer(record)
+#                 return success(serializer.data)
+#             else:
+#                 return error('department_id is invalid')
+#         else:
+#             records = Department.objects.all()
+#             serializer = DepartmentSerializer(records,many=True)
+#             return success(serializer.data)
+#     except Exception as e:
+#         return error(e)
 
 
-def document_category_create(category_name,department_id,description=None):
+def document_category_create(category_name,description=None):
     try:
         request = get_current_request()
         if not request.user.is_authenticated:
@@ -3795,7 +3843,6 @@ def document_category_create(category_name,department_id,description=None):
         
         record = DocumentCategory.objects.create(
                 category_name=category_name,
-                department_id=department_id,
                 description=description,
                 created_by=request.user,
                 update_by=request.user,
@@ -3810,27 +3857,6 @@ def document_category_create(category_name,department_id,description=None):
     except Exception as e:
         return error(e)
 
-def department_create(department_name,description=None):
-    try:
-        request = get_current_request()
-        if not request.user.is_authenticated:
-            return error('Login requried')
-        
-        record = Department.objects.create(
-                department_name=department_name,
-                description=description,
-                created_by=request.user,
-                update_by=request.user,
-            )
-        try:
-            log_audit_trail(request.user.id,'Department Registration', record, 'Create', 'Object Created.')
-        except Exception as e:
-            return error(f"An error occurred: {e}")
-
-
-        return success('Document type create successfully')
-    except Exception as e:
-        return error(e)
 
 def entity_master_create(entity_id,entity_name,entity_type,description=None,db_id=None):
     try:
@@ -3881,26 +3907,27 @@ def document_type_create(document_type_name,short_name,description=None):
         return error(e)
     
 
-def document_upload(document_title,document_category,document_type,entity_type,description,document_upload,folder_id,start_date=None,end_date=None):
+def document_upload(document_title,document_type,entity_type,description,document_upload,folder_id,start_date=None,end_date=None,company_id=None):
     try:
         print('entity_type==+++',entity_type,folder_id)
         request = get_current_request()
         if not request.user.is_authenticated:
             return error('Login requried')
-        
-        
+
         # obj_count=DocumentUpload.objects.all().last()
 
         # print("folder_instance---+++",folder_instance)
     
         folder_instance = FolderMaster.objects.get(folder_id=folder_id)
+        document_type= IdentificationType.objects.get(id=document_type)
+        print("document_type345678o",document_type)
         print("folder_instance---+++",folder_instance)
         print("document_upload56789",document_upload)
         record = DocumentUpload.objects.create(
                 document_id = unique_id_generate_doc('DID'),
+                company_id=company_id,
                 document_title=document_title,
-                document_category_id=document_category,
-                document_type_id=document_type,
+                document_type=document_type,
                 description=description,
                 document_upload=document_upload,
                 folder=folder_instance,
@@ -4016,3 +4043,17 @@ def document_delete(document_id):
         return error('document_id is invalid')
     except Exception as e:
         return error(str(e))
+
+
+def view_audit():
+    try:
+        audit_trail = AuditTrail.objects.all()
+        serializer = AuditTrailSerializer(audit_trail, many=True)
+
+        return success(serializer.data)
+
+    except AuditTrail.DoesNotExist:
+        return error(f"Audit with ID {AuditTrail} not found")
+    except Exception as e:
+        return error(f"An error occurred: {e}")
+

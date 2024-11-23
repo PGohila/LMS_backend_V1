@@ -188,13 +188,8 @@ class FolderMasterSerializer(serializers.ModelSerializer):
         fields = '__all__' 
 
 
-class DepartmentSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Department
-        fields = '__all__'
 
 class DocumentCategorySerializer(serializers.ModelSerializer):
-    department = DepartmentSerializer()
     class Meta:
         model = DocumentCategory
         fields = '__all__'
@@ -211,7 +206,12 @@ class FolderMasterSerializer1(serializers.ModelSerializer):
 
 class DocumentUploadHistorySerializer(serializers.ModelSerializer):
     folder=FolderMasterSerializer1() 
-    document_type = DocumentTypeSerializer()
+    document_type = IdentificationtypeSerializer()
     class Meta:
         model = DocumentUploadHistory
         fields = '__all__'       
+
+class AuditTrailSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AuditTrail
+        fields = '__all__'    

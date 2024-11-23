@@ -138,7 +138,6 @@ class LoanEntryAdmin(admin.ModelAdmin):
 admin.site.register (CustomDocumentEntity)
 admin.site.register (FolderMaster)
 admin.site.register (DocumentType)
-admin.site.register (Department)
 admin.site.register (DocumentCategory)
 admin.site.register (DocumentUpload)
 admin.site.register (DocumentAccess)
