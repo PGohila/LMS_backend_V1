@@ -4057,3 +4057,11 @@ def view_audit():
     except Exception as e:
         return error(f"An error occurred: {e}")
 
+def user_check():
+    try:
+        request = get_current_request()
+        user_check=request.user.is_superuser
+        print("user_check",user_check)
+        return success(user_check)
+    except Exception as e:
+        return error(f"An error occurred: {e}")
