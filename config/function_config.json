@@ -6,6 +6,8 @@
         "user_registration",
         "user_edit",
         "user_delete",
-        "get_user_record"
+        "get_user_record",
+        "userprofile_edit",
+        "userprofile_delete"
     ]
 }
