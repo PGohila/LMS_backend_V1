@@ -1,0 +1,12 @@
+field_name,field_type,multivalue,required,max_length,display_field_for_foreignkey,dependent_foreignkey_field,help_text,date_format,boolean_checkbox,auto_now_checkbox,auto_now_add_checkbox,max_digits,decimal_places,file_limit,foreignkey_name,ip_protocol,image_height,image_width,min_length,many_to_many,one_to_one,use_seconds_checkbox,default,null,blank,choices_fields,choices,primary_key_field,default_field,unique_field
+contact_name,CharField,,TRUE,100,,,,,,,,,,,,,,,,,,,,,,FALSE,,FALSE,,TRUE
+contact_title,CharField,,FALSE,100,,,,,,,,,,,,,,,,,,,,,,FALSE,,FALSE,,FALSE
+email,EmailField,,FALSE,,,,,,,,,,,,,,,,,,,,,,,FALSE,,FALSE,,FALSE
+organization_name,CharField,,FALSE,100,,,,,,,,,,,,,,,,,,,,,,FALSE,,FALSE,,FALSE
+sector,ForeignKey,,FALSE,,,,,,,,,,,,SectorMaster,,,,,,,,,,,FALSE,,FALSE,,FALSE
+industry,ForeignKey,,TRUE,,,,,,,,,,,,IndustryMaster,,,,,,,,,,,FALSE,,FALSE,,FALSE
+contact_type,ForeignKey,,TRUE,,,,,,,,,,,,ContactType,,,,,,,,,,,FALSE,,FALSE,,FALSE
+organization_turnover,ForeignKey,,TRUE,,,,,,,,,,,,SubOrganizationTurnOver,,,,,,,,,,,FALSE,,FALSE,,FALSE
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+country_code,ForeignKey,SubContacts,TRUE,,,,,,,,,,,,CountryCodeMaster,,,,,,,,,,,FALSE,,FALSE,,FALSE
+contact_number,CharField,SubContacts,TRUE,13,,,,,,,,,,,,,,,,,,,,,,FALSE,,FALSE,,TRUE
