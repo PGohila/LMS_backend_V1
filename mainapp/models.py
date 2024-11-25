@@ -1,3 +1,4 @@
+from datetime import datetime
 from django.db import models
 from django.contrib.auth.models import User
 from django.contrib.contenttypes.fields import GenericForeignKey
@@ -779,6 +780,9 @@ class DocumentCategory(models.Model):
 	update_by = models.ForeignKey(User, on_delete=models.CASCADE, blank=True, null=True,related_name="DocumentCategory_update_by")
 	update_at = models.DateTimeField(auto_now=True)
  
+from django.db import models
+import datetime
+
 class DocumentUpload(models.Model):
 	company=models.ForeignKey(Company, on_delete=models.CASCADE,blank=True, null=True)
 	document_id=models.CharField(max_length=100, primary_key=True)
@@ -789,7 +793,7 @@ class DocumentUpload(models.Model):
 	document_size=models.PositiveBigIntegerField(blank=True,null=True)
 	description = models.TextField(blank=True, null=True)
 	document_upload = models.FileField(blank=True, null=True)
-	upload_date = models.DateField(blank=True,null=True)
+	upload_date = models.DateField(blank=True, null=True, default=datetime.date.today)
 	expiry_date= models.DateField(blank=True,null=True)
 	start_date=models.DateField(blank=True,null=True)
 	end_date=models.DateField(blank=True,null=True)
@@ -815,12 +819,12 @@ class DocumentAccess(models.Model):
 class DocumentUploadHistory(models.Model):
 	document_id=models.CharField(max_length=100,blank=False,null=False)
 	document_title=models.CharField(max_length=100,blank=False,null=False)
-	document_type=models.ForeignKey(IdentificationType,on_delete=models.CASCADE)
+	document_type=models.ForeignKey(IdentificationType,on_delete=models.CASCADE,blank=True, null=True)
 	folder=models.ForeignKey(FolderMaster,on_delete=models.CASCADE,blank=True, null=True)
 	document_size=models.PositiveBigIntegerField(blank=True,null=True)
 	description = models.TextField(blank=True, null=True)
 	document_upload = models.FileField(blank=True, null=True)
-	upload_date = models.DateField(blank=True,null=True)
+	upload_date = models.DateField(blank=True, null=True, default=datetime.date.today)
 	expiry_date= models.DateField(blank=True,null=True)
 	start_date=models.DateField(blank=True,null=True)
 	end_date=models.DateField(blank=True,null=True)
@@ -837,7 +841,7 @@ class DocumentUploadAudit(models.Model):
 	document_size=models.PositiveBigIntegerField(blank=True,null=True)
 	description = models.TextField(blank=True, null=True)
 	document_upload = models.FileField(blank=True, null=True)
-	upload_date = models.DateField(blank=True,null=True)
+	upload_date = models.DateField(blank=True, null=True, default=datetime.date.today)
 	expiry_date= models.DateField(blank=True,null=True)
 	start_date=models.DateField(blank=True,null=True)
 	end_date=models.DateField(blank=True,null=True)

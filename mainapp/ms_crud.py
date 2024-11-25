@@ -292,12 +292,14 @@ def create_customerdocuments(company_id,customer_id, document_type_id, attachmen
             description = description,
  
         )
+        try:
+            log_audit_trail(request.user.id,'Customer Document Upload', instance, 'Create', 'Object Created.')
+        except Exception as e:
+            return error(f"An error occurred: {e}")
         folder_instance = FolderMaster.objects.filter(customer_id=customer_id, company_id=company_id,folder_name='Common Customer Folder').last()
-        print("Common_Customer_Folder5467", folder_instance)
         start_date=None
         end_date=None
         document_title = attachment.name
-        print("document_title34567898765434",document_title)
         record = DocumentUpload.objects.create(
             document_id = unique_id_generate_doc('DID'),
             company_id=company_id,
@@ -306,7 +308,6 @@ def create_customerdocuments(company_id,customer_id, document_type_id, attachmen
             description=description,
             document_upload=attachment,
             folder=folder_instance,
-            # upload_date=datetime.now(),
             start_date=start_date,
             end_date=end_date,
             created_by=request.user,
@@ -1455,6 +1456,11 @@ def upload_collateraldocument(company_id,loanapplication_id,document_name,attach
         )
 
         print("instance34567890",instance)
+        try:
+            log_audit_trail(request.user.id,'Collaterals Document Upload', instance, 'Create', 'Object Created.')
+        except Exception as e:
+            return error(f"An error occurred: {e}")
+
         folder_instance = FolderMaster.objects.filter(company_id=company_id,folder_name='Collateral Folder List').last()
         print("folder_instance34567890-54675678", folder_instance)
         start_date=None
@@ -1468,14 +1474,13 @@ def upload_collateraldocument(company_id,loanapplication_id,document_name,attach
             description=desctioption,
             document_upload=attachment,
             folder=folder_instance,
-            # upload_date=datetime.now(),
             start_date=start_date,
             end_date=end_date,
             created_by=request.user,
             update_by=request.user,
             document_size=attachment.size,
         )  
-        print("record34567890p",record)      
+        print("collateralrecord34567890p",record)      
         document_upload_history(record.document_id)
 
 
@@ -3931,7 +3936,6 @@ def document_upload(document_title,document_type,entity_type,description,documen
                 description=description,
                 document_upload=document_upload,
                 folder=folder_instance,
-                # upload_date=datetime.now(),
                 start_date=start_date,
                 end_date=end_date,
                 created_by=request.user,
@@ -4045,17 +4049,50 @@ def document_delete(document_id):
         return error(str(e))
 
 
-def view_audit():
+def folder_delete(entity_id=None,folder_id=None):
+    print("entity_id45678o",entity_id,folder_id)
     try:
-        audit_trail = AuditTrail.objects.all()
-        serializer = AuditTrailSerializer(audit_trail, many=True)
-
-        return success(serializer.data)
-
-    except AuditTrail.DoesNotExist:
-        return error(f"Audit with ID {AuditTrail} not found")
+        if entity_id:
+            entity_instance = CustomDocumentEntity.objects.get(entity_id=entity_id)
+            #records = FolderMaster.objects.filter(entity=entity_instance,default_folder=True,matter__isnull=True)
+            print('recordsdelete=====',entity_instance)
+            entity_instance.delete()
+            return success('Entity Deleted Sucessfully')
+        if folder_id:
+            folder_instance=FolderMaster.objects.get(folder_id=folder_id)
+            folder_instance.delete()
+            return success('Folder Deleted Sucessfully')
+        
+    except CustomDocumentEntity.DoesNotExist:
+        return error('Entity_id is invalid')
     except Exception as e:
-        return error(f"An error occurred: {e}")
+        return error(e)  
+
+def document_edit(document_id,document_name,document_upload):
+    try:
+        print("document_upload---",document_upload,document_id,document_name)
+        request = get_current_request()
+        if not request.user.is_authenticated:
+            return error('Login requried')        
+        
+        obj = DocumentUpload.objects.get(document_id=document_id)
+        obj.document_title = document_name
+        obj.document_upload = document_upload
+        obj.save()
+        print("document_upload_history+++",obj.document_id) 
+        document = document_upload_history(obj.document_id)
+        document_audit = document_upload_audit('updated',obj.document_id)
+        print("document_upload_history///",document) 
+        print("document_audit/",document_audit) 
+        return success("Updated successfully")
+    except DocumentUpload.DoesNotExist:
+        return error('document_id is invalid')
+    except Exception as e:
+        return error(str(e))
+
+
+
+
 
 def user_check():
     try:
@@ -4063,5 +4100,39 @@ def user_check():
         user_check=request.user.is_superuser
         print("user_check",user_check)
         return success(user_check)
+    except Exception as e:
+        return error(f"An error occurred: {e}")
+    
+# def view_audit():
+#     try:
+#         audit_trail = AuditTrail.objects.all().order_by('-datetime')
+#         serializer = AuditTrailSerializer(audit_trail, many=True)
+
+#         return success(serializer.data)
+
+#     except AuditTrail.DoesNotExist:
+#         return error(f"Audit with ID {AuditTrail} not found")
+#     except Exception as e:
+#         return error(f"An error occurred: {e}")
+
+
+
+def view_audit():
+    try:
+        audit_trail = AuditTrail.objects.all().order_by('-datetime')
+        serializer = AuditTrailSerializer(audit_trail, many=True)
+        serialized_data = serializer.data
+
+        # Format the datetime field for each record
+        for record in serialized_data:
+            if 'datetime' in record:
+                original_datetime_str = record['datetime']
+                parsed_datetime = datetime.strptime(original_datetime_str, '%Y-%m-%dT%H:%M:%S.%fZ')
+                record['datetime'] = parsed_datetime.strftime('%Y-%m-%d / %H:%M:%S')
+
+        return success(serialized_data)
+
+    except AuditTrail.DoesNotExist:
+        return error(f"Audit with ID {AuditTrail} not found")
     except Exception as e:
         return error(f"An error occurred: {e}")

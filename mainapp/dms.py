@@ -90,6 +90,20 @@ def create_folder_for_all_customer(customer_id, company_id):
             )
             print(f"Folder_created_for_customer889 {customer.firstname}")
 
+            Common_Customer_Folder = FolderMaster.objects.create(
+                folder_id=f"Common Customer Folder{customer.customer_id}",
+                folder_name="Common Customer Folder",
+                description="Default Common Customer Folder",
+                parent_folder=customer_folder,  # Make it a child of the customer's folder
+                entity=entity_instance,
+                customer=customer,
+                company=company1,
+                master_checkbox_file=False,
+                default_folder=False,
+                created_by=request.user
+            )
+            print(f"Common Customer Folder created as a child of {Common_Customer_Folder}'s folder")
+
             # Create two child subfolders inside the customer's folder
             collateral_folder = FolderMaster.objects.create(
                 folder_id=f"folder_collateral_{customer.customer_id}",
@@ -119,19 +133,6 @@ def create_folder_for_all_customer(customer_id, company_id):
             )
             print(f"Loan Agreement Folder created as a child of {loan_agreement_folder}'s folder")
 
-            Common_Customer_Folder = FolderMaster.objects.create(
-                folder_id=f"Common Customer Folder{customer.customer_id}",
-                folder_name="Common Customer Folder",
-                description="Default Common Customer Folder",
-                parent_folder=customer_folder,  # Make it a child of the customer's folder
-                entity=entity_instance,
-                customer=customer,
-                company=company1,
-                master_checkbox_file=False,
-                default_folder=False,
-                created_by=request.user
-            )
-            print(f"Common Customer Folder created as a child of {Common_Customer_Folder}'s folder")
         return success('Folders created for customer including default child folders.')
 
     except CustomDocumentEntity.DoesNotExist:
@@ -144,27 +145,36 @@ def document_upload_history(document_id):
     try:
         record=DocumentUpload.objects.get(document_id=document_id)
      
-        print('entity_type==///',record)
+        print('recordentity_type==',record)
         request = get_current_request()
         if not request.user.is_authenticated:
             return error('Login requried')
         
         record_count = DocumentUploadHistory.objects.filter(document_id=document_id).count()
+        print("record_count345678",record_count)
         new_version = record_count + 1
+        print("document_idrecord.document_type",record.folder.id)
+        document_type=record.document_type
+        if document_type is not None:
+            print("insides3456789")
+            document_type1=record.document_type.id
+        else:
+            print("inside else")
+            document_type1=None
+
         records=DocumentUploadHistory.objects.create(
             document_id=document_id,
             document_title=record.document_title,
-            document_type_id=record.document_type.id,
+            document_type_id=document_type1,
             description=record.description,
             document_upload=record.document_upload,
             folder_id=record.folder.id,
-            upload_date=datetime.now(),
             start_date=record.start_date,
             end_date=record.end_date,         
             document_size=record.document_upload.size,
             version=new_version
             )    
-        print('record+++',records.document_id)
+        print('record+++',records)
         
      
     except Exception as e:
@@ -186,7 +196,6 @@ def document_upload_audit(status,document_id):
             description=record.description,
             document_upload=record.document_upload,
             folder_id=record.folder.id,
-            upload_date=datetime.now(),
             start_date=record.start_date,
             end_date=record.end_date,         
             document_size=record.document_upload.size,
