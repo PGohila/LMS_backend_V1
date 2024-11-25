@@ -60,7 +60,7 @@ def forgot_password(email):
     try:
         user = User.objects.get(email=email)
         generate_and_send_otp(user)
-        return success("Password changed successfully.")
+        return success("OTP send successfully.")
     except User.DoesNotExist:
         return error("User does not exist.")
     except Exception as e:
@@ -112,6 +112,11 @@ def user_registration(first_name, last_name, email, phone_number, password,user_
             # maker=maker,
             # checker=checker
         )
+        name = "Mathan"
+        channel_id =2
+        template_id = "TMP25112404233807"	
+        message = "User Created Successfully"
+        recipient = "+919042757290"
         return success(f'Successfully created {instance} ')
     
     except User.DoesNotExist:
@@ -489,7 +494,6 @@ def send_otp_to_user( otp_code):
             "name":user.first_name 
         }
     }
-    
     headers = {
         "Content-Type": "application/json",
         "Authorization": f"Bearer {access_token}"  
@@ -501,5 +505,33 @@ def send_otp_to_user( otp_code):
         return success("OTP sent successfully!")
     else:
         return success(f"Failed to send OTP. Status Code: {response.status_code}, Response: {response.text}")
+
+def send_alert_to_user(name,channel_id,template_id,message,recipient):
+    request = get_current_request()
+    if not request.user.is_authenticated:
+        return error('Login required')
+    user = request.user
+    access_token = get_access_token()
+
+    url = "https://genericdelivery.pythonanywhere.com/templatemanage/api/message/"
+    
+    payload = {
+        "channel_id": channel_id,
+        "template_id": template_id,
+        "recipient_list": [recipient],  
+        "task_data": {
+            "message": message,
+            "name":name 
+        }
+    }
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {access_token}"  
+    }
+    response = requests.post(url, json=payload, headers=headers)
+    if response.status_code == 200:
+        return success("Alter sent successfully!")
+    else:
+        return success(f"Failed to send alter. Status Code: {response.status_code}, Response: {response.text}")
 
 

@@ -71,6 +71,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     phone_number = models.CharField(max_length=15, blank=False, null=False)
     password=models.CharField(max_length=100, blank=False, null=False)
     #roles=models.CharField(max_length=100, blank=False, null=False)
+    # company = models.ForeignKey()
     user_profile = models.ForeignKey(UserProfile, on_delete=models.CASCADE, blank=True, null=True)
     multi_factor_auth = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)

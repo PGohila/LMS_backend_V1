@@ -393,6 +393,7 @@ class ValueChain(models.Model):
 # This is the main account for tracking principal, interest, and penalties for each loan
 class LoanAccount(models.Model):
     company = models.ForeignKey(Company,on_delete=models.CASCADE, related_name='%(class)s_company')
+    account_no = models.CharField(max_length=50)
     loan = models.OneToOneField(Loan, on_delete = models.CASCADE, related_name="loan_detail5")
     principal_amount = models.FloatField(default = 0.0)
     interest_amount = models.FloatField(default = 0.0)
@@ -407,6 +408,7 @@ class LoanAccount(models.Model):
 # This model tracks the disbursement of funds for each loan. each loan have disbursement account
 class LoanDisbursementAccount(models.Model):
     company = models.ForeignKey(Company,on_delete=models.CASCADE, related_name='%(class)s_company')
+    account_no = models.CharField(max_length=50)
     loan = models.OneToOneField(Loan, on_delete=models.CASCADE, related_name="loan_detail4")
     amount = models.FloatField(default=0.0)
     milestone_account = models.ForeignKey('MilestoneAccount', on_delete=models.SET_NULL, null=True, blank=True)
@@ -422,6 +424,7 @@ class LoanDisbursementAccount(models.Model):
 # This model handles all repayments made by the borrower.
 class LoanRepaymentAccount(models.Model):
     company = models.ForeignKey(Company,on_delete=models.CASCADE, related_name='%(class)s_company')
+    account_no = models.CharField(max_length=50)
     loan = models.OneToOneField(Loan, on_delete=models.CASCADE, related_name="loan_detail3")
     repayment_date = models.DateTimeField(auto_now_add=True)
     amount = models.FloatField(default=0.0)
@@ -438,6 +441,7 @@ class LoanRepaymentAccount(models.Model):
 # This is the main account for tracking principal, interest, and penalties for each loan
 class PenaltyAccount(models.Model):
     company = models.ForeignKey(Company,on_delete=models.CASCADE, related_name='%(class)s_company')
+    account_no = models.CharField(max_length=50)
     loan = models.OneToOneField(Loan, on_delete=models.CASCADE, related_name="loan_detail2")
     penalty_date = models.DateTimeField(auto_now_add=True)
     penalty_amount = models.FloatField(default=0.0)
@@ -452,6 +456,7 @@ class PenaltyAccount(models.Model):
 # This handles the recording of interest accruals and payments.
 class InterestAccount(models.Model):
     company = models.ForeignKey(Company,on_delete=models.CASCADE, related_name='%(class)s_company')
+    account_no = models.CharField(max_length=50)
     loan = models.OneToOneField(Loan, on_delete=models.CASCADE, related_name="loan_detail")
     interest_accrued = models.FloatField(default=0.0)
     interest_payment_date = models.DateField(null=True, blank=True)

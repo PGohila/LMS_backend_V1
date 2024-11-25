@@ -13,6 +13,9 @@ from django.shortcuts import render,redirect
 import inspect
 from datetime import datetime
 from rest_framework import permissions
+from django.contrib.auth.hashers import make_password,check_password
+from .scripts import *
+from user_management.service import generate_and_send_otp
 
 # MS setup views
 def common_response(status_code=0,message=None):
