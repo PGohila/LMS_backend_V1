@@ -919,6 +919,16 @@ def view_loan(loan_id=None,loanapp_id = None,company=None):
         # Return an error response with the exception message
         return error(f"An error occurred: {e}")
 
+def getting_loan_tranches(company_id):
+    try:
+        records = Loan.objects.filter(company_id = company_id,loanapp_id__disbursement_type = 'trenches')
+        serializer = LoanSerializer(records, many=True)
+        return success(serializer.data)
+    except Exception as e:
+        # Return an error response with the exception message
+        return error(f"An error occurred: {e}")
+
+
 def getting_approved_loanapp_records(company_id):
     try:
         records = Loan.objects.filter(company_id = company_id,workflow_stats__iexact = "Approved").order_by('-id')
@@ -3354,6 +3364,251 @@ def delete_repayment_schedule(repayment_schedule_id):
         return error(f"An error occurred: {e}")
 
 
+# ============= Value Chain==================================
+
+def create_valuechainsetup(company_id,loan_type_id,valuechain_name,max_amount,min_amount,status=True,description = None):
+    try:
+        request = get_current_request()
+        if not request.user.is_authenticated:
+            return error('Login required')  
+        
+        # Generate a unique offer ID
+        chainid = ValueChainSetUps.objects.last()
+        last_id = '000'
+        if chainid:
+            last_id = chainid.unique_id[6:]
+        uniqueid = unique_id('VC', last_id)
+        print("63e753")
+        ValueChainSetUps.objects.create(
+            company_id = company_id,
+            unique_id = uniqueid,
+            loan_type_id = loan_type_id,
+            valuechain_name = valuechain_name,
+            max_amount  = max_amount,
+            min_amount = min_amount,
+            description = description,
+            status = status,
+        )
+        return success('success')
+    except Exception as e:
+        return error(f"An error occurred: {e}")
+
+def getting_valuechainsetups(company_id = None, loantype_id = None,valuechain_id = None):
+    try:
+        if valuechain_id is not None:
+            value_chains = ValueChainSetUps.objects.get(id = valuechain_id)
+            serializers = ValueChainSetUpsSerializer(value_chains).data
+        else:
+            value_chains = ValueChainSetUps.objects.filter(company_id =company_id, loan_type_id=loantype_id)
+            serializers = ValueChainSetUpsSerializer(value_chains,many = True).data
+
+        return success(serializers)
+    except Exception as e:
+        return error(f"An error occurred: {e}")
+
+def valuechain_setup_edit(valuechain_id,valuechain_name,max_amount,min_amount,description,status):
+    try:
+        value_chains = ValueChainSetUps.objects.get(id = valuechain_id)
+        value_chains.valuechain_name = valuechain_name
+        value_chains.max_amount = float(max_amount)
+        value_chains.min_amount = float(min_amount)
+        value_chains.description = description
+        value_chains.status = status
+        value_chains.save()
+        return success('Sucessfully updated')
+    except ValueChainSetUps.DoesNotExist:
+        return error('Invalid ValueChainSetUps ID: ValueChainSetUps not found.')
+    except Exception as e:
+        return error(f"An error occurred: {e}")
+    
+def valuechain_setup_delete(valuechain_id):
+    try:
+        value_chains = ValueChainSetUps.objects.get(id = valuechain_id)
+        value_chains.delete()
+        return success('Sucessfully Deleted')
+    except Exception as e:
+        return error(f"An error occurred: {e}")
+
+
+def create_milestonesetup(company_id,loan_type,valuechain_id,milestone_name,max_amount,min_amount,description = None):
+    try:
+        request = get_current_request()
+        if not request.user.is_authenticated:
+            return error('Login required')
+        
+        # Generate a unique offer ID
+        chainid = MilestoneSetUp.objects.last()
+        
+        last_id = '000'
+        if chainid:
+            last_id = chainid.unique_id[9:]
+        
+        uniqueid = unique_id('MS', last_id)
+        MilestoneSetUp.objects.create(
+            company_id = company_id,
+            unique_id = uniqueid,
+            loan_type_id = loan_type,
+            valuechain_id_id = valuechain_id,
+            milestone_name = milestone_name,
+            max_amount = max_amount,
+            min_amount = min_amount,
+            description = description,
+        )
+
+        return success('success')
+    except Exception as e:
+        return error(f"An error occurred: {e}")
+
+def getting_milestonesetup(company_id,valuechain_id = None,miletone_id = None):
+    try:
+        if miletone_id is not None:
+            records = MilestoneSetUp.objects.get(id = miletone_id)
+            serializers = MilestoneSetUpSerializer(records).data
+        else:
+            records = MilestoneSetUp.objects.filter(company_id = company_id,valuechain_id_id = valuechain_id)
+            serializers = MilestoneSetUpSerializer(records,many=True).data
+        return success(serializers)
+    except Exception as e:
+        return error(f"An error occurred: {e}")
+
+def milestone_setup_edit(milestone_id,milestone_name,max_amount,min_amount,description,status):
+    try:
+        milestones = MilestoneSetUp.objects.get(id = milestone_id)
+        milestones.milestone_name = milestone_name
+        milestones.max_amount = float(max_amount)
+        milestones.min_amount = float(min_amount)
+        milestones.description = description
+        milestones.status = status
+        milestones.save()
+        return success('Sucessfully updated')
+    except ValueChainSetUps.DoesNotExist:
+        return error('Invalid ValueChainSetUps ID: ValueChainSetUps not found.')
+    except Exception as e:
+        return error(f"An error occurred: {e}")
+    
+def milestone_setup_delete(milestone_id):
+    try:
+        milestones = MilestoneSetUp.objects.get(id = milestone_id)
+        milestones.delete()
+        return success('Sucessfully Deleted')
+    except Exception as e:
+        return error(f"An error occurred: {e}")
+
+def create_stagesetup(company_id,milestone_id,stage_name,min_amount,max_amount,sequence,description = None):
+    try:
+        request = get_current_request()
+        if not request.user.is_authenticated:
+            return error('Login required')
+        
+        MilestoneStagesSetup.objects.create(
+            company_id = company_id,
+            milestone_id_id = milestone_id,
+            stage_name = stage_name,
+            sequence = sequence,
+            max_amount = max_amount,
+            min_amount = min_amount,
+            description = description,
+        )
+        return success('success')
+    except Exception as e:
+        return error(f"An error occurred: {e}")
+
+def getting_milestonestagessetup(company_id,miletone_id = None,stages_id = None):
+    try:
+        if stages_id is not None:
+            records = MilestoneStagesSetup.objects.get(id = stages_id)
+            serializers = MilestoneStagesSetupSerializer(records).data
+        else:
+            records = MilestoneStagesSetup.objects.filter(company_id = company_id,milestone_id_id = miletone_id)
+            serializers = MilestoneStagesSetupSerializer(records,many=True).data
+        return success(serializers)
+    except Exception as e:
+        return error(f"An error occurred: {e}")
+
+def stages_setup_edit(stages_id,stage_name,max_amount,min_amount,description,sequence):
+    try:
+        stages = MilestoneStagesSetup.objects.get(id = stages_id)
+        stages.stage_name = stage_name
+        stages.max_amount = float(max_amount)
+        stages.min_amount = float(min_amount)
+        stages.description = description
+        stages.sequence = sequence
+        stages.save()
+        return success('Sucessfully updated')
+    except ValueChainSetUps.DoesNotExist:
+        return error('Invalid ValueChainSetUps ID: ValueChainSetUps not found.')
+    except Exception as e:
+        return error(f"An error occurred: {e}")
+    
+def stages_setup_delete(stages_id):
+    try:
+        milestones = MilestoneStagesSetup.objects.get(id = stages_id)
+        milestones.delete()
+        return success('Sucessfully Deleted')
+    except Exception as e:
+        return error(f"An error occurred: {e}") 
+
+def create_loanvaluechain(company_id):
+    try:
+        records = Loan.objects.filter(company_id = company_id,loanapp_id__disbursement_type = 'trenches')
+        for data in records:
+            valuechain = ValueChainSetUps.objects.filter(loan_type_id = data.loanapp_id.loantype.id)
+            for data1 in valuechain: # looping valuechain
+                # Generate a unique offer ID
+                chainid = LoanValuechain.objects.last()
+                last_id = '000'
+                if chainid:
+                    last_id = chainid.unique_id[10:]
+                uniqueid = unique_id('LVC', last_id)
+
+                loanchain = LoanValuechain.objects.create(
+                    company_id = company_id,
+                    loan_id = data.id,
+                    unique_id = uniqueid,
+                    loan_type_id = data1.loan_type.id,
+                    valuechain_name = data1.valuechain_name,
+                    amount  = 0.0,
+                    description = data1.description,
+                    active = True,
+                    sequence = 1,  # Order of milestones
+                )
+
+                milestone = MilestoneSetUp.objects.filter(valuechain_id_id = data1.id) # milestone 
+                for data2 in milestone: # looping milestone
+                    # Generate a unique offer ID
+                    milestoneid = LoanMilestone.objects.last()
+                    last_id = '000'
+                    if milestoneid:
+                        last_id = milestoneid.unique_id[10:]
+                    uniqueid = unique_id('LMS', last_id)
+
+                    milestone = LoanMilestone.objects.create(
+                        company_id = company_id,
+                        loan_id = data.id,
+                        unique_id = uniqueid,
+                        loan_type_id = data1.loan_type.id,
+                        valuechain_id_id = loanchain.id,
+                        milestone_name = data2.milestone_name,
+                        max_amount  = 0.0,
+                        description = data2.description,
+                        active = True,
+                        sequence = 1,
+                    )
+
+                    milestonestages = MilestoneStagesSetup.objects.filter(milestone_id_id = data2.id) # milestone
+                    for data3 in milestonestages:
+                        LoanMilestoneStages.objects.create(
+                            company_id = company_id,
+                            loan_id = data.id,
+                            milestone_id_id = milestone.id,
+                            stage_name = data3.stage_name,
+                            description = data3.description,  # Optional description of the stage
+                            sequence = 1,
+                        )
+
+        return success("success")
+    except Exception as e:
+        return error(f"An error occurred: {e}") 
 
 
 # def update_loan(loan_id,company_id=None, loanid=None, customer_id=None, loan_amount=None, loan_date=None, loan_term=None, interest_rate=None, status=None):

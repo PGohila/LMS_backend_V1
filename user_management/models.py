@@ -5,7 +5,11 @@ from django.contrib.auth.models import (
     PermissionsMixin,
     BaseUserManager,
 )
-
+from django.db import models
+from django.contrib.auth.models import User
+from django.utils import timezone
+import random
+import string
 
 class Function(models.Model):
 	function_name=models.CharField(max_length=100)
@@ -68,6 +72,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     password=models.CharField(max_length=100, blank=False, null=False)
     #roles=models.CharField(max_length=100, blank=False, null=False)
     user_profile = models.ForeignKey(UserProfile, on_delete=models.CASCADE, blank=True, null=True)
+    multi_factor_auth = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     is_staff = models.BooleanField(default=False)
@@ -80,6 +85,30 @@ class User(AbstractBaseUser, PermissionsMixin):
     def __str__(self) -> str:
         return self.email
 
+
+
+# Generate a random OTP
+def generate_otp():
+    return ''.join(random.choices(string.digits, k=4))
+
+class OTP(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    otp = models.CharField(max_length=6, default=generate_otp)
+    created_at = models.DateTimeField(auto_now_add=True)
+    status = models.CharField(max_length=10, default='UNUSED') 
+
+    # expired_at = models.DateTimeField()
+    
+    # def is_expired(self):
+    #     return timezone.now() > self.expired_at
+
+    # def __str__(self):
+    #     return f"OTP for {self.user.username}: {self.otp}"
+    
+    # def save(self, *args, **kwargs):
+    #     if not self.expired_at:
+    #         self.expired_at = timezone.now() + timezone.timedelta(minutes=5)  # OTP expires in 5 minutes
+    #     super().save(*args, **kwargs)
 
 
 # class Permission(models.Model):

@@ -151,11 +151,32 @@ class DisbursementSerializer(serializers.ModelSerializer):
         fields = "__all__"
 
 
+class ValueChainSetUpsSerializer(serializers.ModelSerializer):
+    loan_type = LoanTypeSerializer()
+    company = CompanySerializer()
+    class Meta:
+        model = ValueChainSetUps
+        fields = ['id','company', 'unique_id', 'loan_type', 'valuechain_name', 'max_amount', 
+                  'min_amount', 'description', 'status']
+
+class MilestoneSetUpSerializer(serializers.ModelSerializer):
+    loan_type = LoanTypeSerializer()
+    valuechain_id = ValueChainSetUpsSerializer()
+    class Meta:
+        model = MilestoneSetUp
+        fields = "__all__"
+
+class MilestoneStagesSetupSerializer(serializers.ModelSerializer):
+    company = CompanySerializer()
+    milestone_id = MilestoneSetUpSerializer()
+    class Meta:
+        model = MilestoneStagesSetup
+        fields = "__all__"
+
 class LoanOfferSerializer(serializers.ModelSerializer):
     class Meta:
         model = LoanOffer
         fields = "__all__"
-
 
 class RepaymentscheduleSerializer(serializers.ModelSerializer):
     loan_application = LoanapplicationSerializer()
