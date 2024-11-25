@@ -369,26 +369,106 @@ class Loan(models.Model):
     is_active = models.BooleanField(default=True)
     def __str__(self):
         return f"Loan {self.loan_id}"
-    
-class ValueChain(models.Model):
-    id = models.AutoField(primary_key=True)
-    loan_application = models.ForeignKey('LoanApplication', on_delete=models.CASCADE)
-    status = models.CharField(max_length=50, choices=[
-        ('applied', 'Applied'),
-        ('under_review', 'Under Review'),
-        ('approved', 'Approved'),
-        ('disbursed', 'Disbursed'),
-        ('completed', 'Completed'),
-        ('rejected', 'Rejected'),
-    ])
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    notes = models.TextField(blank=True, null=True)
-    risk_score = models.FloatField(default=0.0)
-    risk_factor = models.CharField(max_length=100, blank=True, null=True)
 
+class ValueChainSetUps(models.Model):
+    company = models.ForeignKey(Company, on_delete=models.CASCADE)
+    unique_id = models.CharField(max_length=100,unique=True)
+    loan_type = models.ForeignKey(LoanType, on_delete=models.CASCADE)
+    valuechain_name = models.CharField(max_length=500)
+    max_amount  = models.FloatField(default= 0.0)
+    min_amount = models.FloatField(default=0.0)
+    description = models.TextField(blank=True,null=True)
+    status = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)    
     def __str__(self):
-        return f'Value Chain for Loan {self.loan_application.id} - Status: {self.status}'
+        return f"{self.valuechain_name}"
+
+class MilestoneSetUp(models.Model):
+    company = models.ForeignKey(Company, on_delete=models.CASCADE)
+    unique_id = models.CharField(max_length=100,unique=True)
+    loan_type = models.ForeignKey(LoanType, on_delete=models.CASCADE)
+    valuechain_id = models.ForeignKey(ValueChainSetUps,on_delete=models.CASCADE)
+    milestone_name = models.CharField(max_length=500)
+    max_amount  = models.FloatField(default=0.0)
+    min_amount = models.FloatField(default=0.0)
+    description = models.TextField(blank=True,null=True)
+    status = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True) 
+    def __str__(self):
+        return f"{self.milestone_name}"
+
+class MilestoneStagesSetup(models.Model):
+    company = models.ForeignKey(Company, on_delete=models.CASCADE)
+    milestone_id = models.ForeignKey(MilestoneSetUp,on_delete=models.CASCADE)
+    stage_name = models.CharField(max_length=500)
+    min_amount = models.FloatField(default=0.0)  # Amount allocated for this stage
+    max_amount = models.FloatField(default=0.0)
+    description = models.TextField(null=True, blank=True)  # Optional description of the stage
+    sequence = models.PositiveIntegerField(default = 1)  # Order of the stage in the milestone
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True) 
+
+# actual value chain for loan application
+class LoanValuechain(models.Model):
+    company = models.ForeignKey(Company, on_delete=models.CASCADE)
+    loan = models.ForeignKey(Loan, on_delete=models.CASCADE,related_name = '%(class)s_loan')
+    unique_id = models.CharField(max_length=100,unique=True)
+    loan_type = models.ForeignKey(LoanType, on_delete=models.CASCADE)
+    valuechain_name = models.CharField(max_length=500)
+    amount  = models.FloatField(default= 0.0)
+    description = models.TextField(blank=True,null=True)
+    start_date = models.DateField(blank=True, null=True)  # Optional start date
+    end_date = models.DateField(blank=True, null=True)  # Optional end date
+    active = models.BooleanField(default=False)
+    due_date = models.DateField(blank=True, null=True)  # Expected completion date
+    actual_completion_date = models.DateField(blank=True, null=True)  # When milestone was completed
+    sequence = models.PositiveIntegerField()  # Order of milestones
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)    
+    def __str__(self):
+        return f"{self.valuechain_name}"
+     
+class LoanMilestone(models.Model):
+    company = models.ForeignKey(Company, on_delete=models.CASCADE)
+    loan = models.ForeignKey(Loan, on_delete=models.CASCADE,related_name = '%(class)s_loan')
+    unique_id = models.CharField(max_length=100,unique=True)
+    loan_type = models.ForeignKey(LoanType, on_delete=models.CASCADE)
+    valuechain_id = models.ForeignKey(LoanValuechain,on_delete=models.CASCADE)
+    milestone_name = models.CharField(max_length=500)
+    max_amount  = models.FloatField(default=0.0)
+    description = models.TextField(blank=True,null=True)
+    active = models.BooleanField(default=False)
+    due_date = models.DateField(blank=True, null=True)  # Expected completion date
+    actual_completion_date = models.DateField(blank=True, null=True)  # When milestone was completed
+    sequence = models.PositiveIntegerField()  # Order of milestones
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True) 
+    def __str__(self):
+        return f"{self.milestone_name}"
+
+class LoanMilestoneStages(models.Model):
+    company = models.ForeignKey(Company, on_delete=models.CASCADE)
+    loan = models.ForeignKey(Loan, on_delete=models.CASCADE,related_name = '%(class)s_loan')
+    milestone_id = models.ForeignKey(LoanMilestone,on_delete=models.CASCADE)
+    stage_name = models.CharField(max_length=500)
+    min_amount = models.FloatField(default=0.0)  # Amount allocated for this stage
+    max_amount = models.FloatField(default=0.0)
+    description = models.TextField(null=True, blank=True)  # Optional description of the stage
+    sequence = models.PositiveIntegerField(default = 0)  # Order of the stage in the milestone
+    start_date = models.DateField(blank=True, null=True)  # Optional start date
+    end_date = models.DateField(blank=True, null=True)  # Optional end date
+    status = models.CharField(
+        max_length=50, 
+        choices=[("Pending", "Pending"), ("In Progress", "In Progress"), ("Completed", "Completed")], 
+        default="Pending"
+    )  # Stage status
+    actual_completion_date = models.DateField(blank=True, null=True)  # Completion date
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True) 
+
+
     
 # This is the main account for tracking principal, interest, and penalties for each loan
 class LoanAccount(models.Model):
@@ -466,7 +546,7 @@ class InterestAccount(models.Model):
 class MilestoneAccount(models.Model):
     company = models.ForeignKey(Company,on_delete=models.CASCADE, related_name='%(class)s_company')
     loan = models.OneToOneField(Loan, on_delete=models.CASCADE, related_name="loan_detail1")
-    milestone_header = models.ForeignKey('ValueChain', on_delete=models.CASCADE)  # This is the value chain or scheme-based identifier
+    milestone_header = models.ForeignKey('LoanValuechain', on_delete=models.CASCADE)  # This is the value chain or scheme-based identifier
     milestone_cost = models.FloatField(default=0.0)
     disbursement_date = models.DateTimeField(auto_now_add=True)
     status = models.CharField(max_length=50, default='pending', choices=[('pending', 'Pending'), ('completed', 'Completed')])
