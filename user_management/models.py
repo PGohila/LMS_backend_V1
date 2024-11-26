@@ -50,7 +50,7 @@ class CustomUserManager(BaseUserManager):
         other_fields.setdefault("is_staff", True)
         other_fields.setdefault("is_superuser", True)
         other_fields.setdefault("is_active", True)
-        # other_fields.setdefault("checker", True)
+        other_fields.setdefault("multi_factor_auth", True)
         return self.create_user(email, password, **other_fields)
     
     

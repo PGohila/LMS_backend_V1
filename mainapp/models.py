@@ -582,10 +582,11 @@ class LoanAgreement(models.Model):
     loan_id = models.ForeignKey(Loan, on_delete=models.CASCADE, related_name='%(class)s_loan_id')
     loanapp_id = models.ForeignKey(LoanApplication, on_delete=models.CASCADE, related_name='%(class)s_loanapp_id')
     customer_id = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name='%(class)s_customer_id')
-    agreement_terms = models.TextField(blank=True, null=True)
+    agreement_template = models.ForeignKey('Template', on_delete=models.CASCADE, related_name='%(class)s_agreement_template')
+    agreement_template_value = models.JSONField(blank=True, null=True)
     agreement_date = models.DateTimeField(auto_now_add=True)
-    borrower_signature = models.FileField(upload_to='signatures/borrowers/', blank=True, null=True)
-    lender_signature = models.FileField(upload_to='signatures/lenders/', blank=True, null=True)
+    borrower_signature = models.TextField(blank=True, null=True)
+    lender_signature = models.TextField(blank=True, null=True)
     signed_at = models.DateTimeField(blank=True, null=True)
     agreement_status = models.CharField(max_length=70, choices=[
         ('Active', 'Active'),
@@ -952,3 +953,13 @@ class AuditTrail(models.Model):
     content_object = GenericForeignKey('content_type', 'object_id')
     action = models.CharField(max_length=50)  # 'create', 'update', 'delete'
     details = models.TextField(null=True, blank=True)
+
+
+class Template(models.Model):
+    template_name = models.CharField(max_length=50)
+    content = models.TextField()
+    created_by = models.ForeignKey(User, related_name='Template_created_by', on_delete=models.SET_NULL,null=True)
+    updated_by = models.ForeignKey(User, related_name='Template_updated_by', on_delete=models.SET_NULL,null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+

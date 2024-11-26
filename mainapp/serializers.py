@@ -232,6 +232,11 @@ class DocumentUploadHistorySerializer(serializers.ModelSerializer):
         model = DocumentUploadHistory
         fields = '__all__'       
 
+
+class TemplateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Template
+        fields = '__all__'       
 class LoanAccountSerializer(serializers.ModelSerializer):
     loan = LoanSerializer()
     class Meta:
