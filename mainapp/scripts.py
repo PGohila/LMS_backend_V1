@@ -78,8 +78,8 @@ def check_loan_eligibility(applicant_details, loan_amount):
     
     # Income check
     minimum_income = 25000  # Example threshold # loan type minimum income
-    if applicant_details.customer_income < minimum_income:
-        errors.append(f"Monthly income is below the threshold of {minimum_income}.")
+    if applicant_details.customer_income >= minimum_income:
+        errors.append(f"Monthly income is below the threshold of {minimum_income}. income {applicant_details.customer_income}")
     
     # Credit score check
     minimum_credit_score = 650  # Example threshold

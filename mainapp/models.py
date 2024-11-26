@@ -687,6 +687,7 @@ class RepaymentSchedule(models.Model):
     repayment_status = models.CharField(max_length = 50,choices = [
         ('Paid', 'Paid'),
         ('Pending', 'Pending'),
+        
     ],default="Pending")
     payment_method = models.ForeignKey(PaymentMethod,on_delete=models.CASCADE,related_name='%(class)s_payment_method',blank=True,null=True)
     transaction_id = models.CharField(max_length=50,blank=True,null=True)

@@ -649,7 +649,8 @@ def check_loan_eligibilities_forall(company_id):
         request = get_current_request()
         if not request.user.is_authenticated:
             return error('Login required')
-        
+        is_eligible = None
+        errors = None
         instance = LoanApplication.objects.filter(is_active = True,company_id = company_id)
         for applications in instance:
             applicant_deatils = Customer.objects.get(pk=applications.customer_id.id)
@@ -659,9 +660,10 @@ def check_loan_eligibilities_forall(company_id):
             existing_loan_liabilities = calculate_existing_liabilities(loanids)
             applicant_deatils.existing_liabilities = existing_loan_liabilities
             applicant_deatils.save()
-
+            print("===================sdfdfd=====")
             # Perform eligibility check
             is_eligible, errors = check_loan_eligibility(applicant_deatils, applications.loan_amount)
+            print("========================",is_eligible)
             
             if is_eligible == True:
                 applications.is_eligible = True
@@ -1494,13 +1496,39 @@ def getting_disbursementloans(company_id):
     except Exception as e:
         return error(f"An error occurred: {e}")
 
+
 def getting_repayment_schedules(company_id,loanapp_id):
     try:
         instance = RepaymentSchedule.objects.filter(company_id=company_id,loan_id_id = loanapp_id)
         serializer = RepaymentscheduleSerializer(instance,many=True)
+        
         return success(serializer.data) 
     except Exception as e:
         return error(f"An error occurred: {e}")
+
+
+def getting_next_schedules(company_id, loanapp_id):
+    try:
+        # Filter repayment schedules based on company and loan application
+        instance = RepaymentSchedule.objects.filter(company_id=company_id, loan_application_id=loanapp_id, repayment_status='Pending')
+        
+        # Order by repayment date to find the earliest pending repayment
+        next_due_schedule = instance.order_by('repayment_date').first()
+
+        if next_due_schedule:
+            # Fetch next due date and instalment amount
+            next_due_date = next_due_schedule.repayment_date
+            amount_due = next_due_schedule.instalment_amount
+            return success({
+                "next_due_date": next_due_date,
+                "amount_due": amount_due
+            })
+        else:
+            return error("No pending repayment schedules found.")
+            
+    except Exception as e:
+        return error(f"An error occurred: {e}")
+
 
 def confirmed_schedule(loan_id):
     try:
@@ -1511,6 +1539,30 @@ def confirmed_schedule(loan_id):
         return success('Sucessfully Confirmed') 
     except Exception as e:
         return error(f"An error occurred: {e}")
+
+
+def getting_schedule(schedule_id):
+    try:
+        instance=RepaymentSchedule.objects.get(schedule_id= schedule_id)
+        serializer=RepaymentscheduleSerializer(instance)
+        return success(serializer.data) 
+    except Exception as e:
+        return error(f"An error occurred: {e}")
+
+
+
+def paid_schedule(schedule_id):
+    try:
+        schedule=RepaymentSchedule.objects.get(schedule_id= schedule_id)
+        if schedule:
+            schedule.repayment_status = 'Paid'
+            schedule.paid_amount=schedule.instalment_amount
+
+            schedule.save()
+        return success('Sucessfully Confirmed') 
+    except Exception as e:
+        return error(f"An error occurred: {e}")
+
 
 
 def create_collaterals(company_id, loanapp_id, customer_id, collateral_type_id, collateral_value, valuation_date, collateral_status, insurance_status,description=None):
