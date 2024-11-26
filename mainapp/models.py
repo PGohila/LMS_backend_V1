@@ -384,6 +384,7 @@ class Loan(models.Model):
     is_eligible = models.BooleanField(default=False) # customer eligible checking
     eligible_rejection_reason = models.TextField(null=True, blank=True)
     checked_on = models.DateTimeField(null=True, blank=True)
+    disbursement_trenches = models.BooleanField(default=False)
     risk_score = models.FloatField(default=0.0, null=True, blank=True)  # E.g., from 0.00 to 100.00
     risk_factor = models.TextField(null=True, blank=True)  # To store detailed risk factors as text
     is_active = models.BooleanField(default=True)
@@ -457,7 +458,7 @@ class LoanMilestone(models.Model):
     loan_type = models.ForeignKey(LoanType, on_delete=models.CASCADE)
     valuechain_id = models.ForeignKey(LoanValuechain,on_delete=models.CASCADE)
     milestone_name = models.CharField(max_length=500)
-    max_amount  = models.FloatField(default=0.0)
+    amount  = models.FloatField(default=0.0)
     description = models.TextField(blank=True,null=True)
     active = models.BooleanField(default=False)
     due_date = models.DateField(blank=True, null=True)  # Expected completion date
@@ -470,11 +471,10 @@ class LoanMilestone(models.Model):
 
 class LoanMilestoneStages(models.Model):
     company = models.ForeignKey(Company, on_delete=models.CASCADE)
-    loan = models.ForeignKey(Loan, on_delete=models.CASCADE,related_name = '%(class)s_loan')
+    loan = models.ForeignKey(Loan, on_delete=models.CASCADE, related_name = '%(class)s_loan')
     milestone_id = models.ForeignKey(LoanMilestone,on_delete=models.CASCADE)
     stage_name = models.CharField(max_length=500)
-    min_amount = models.FloatField(default=0.0)  # Amount allocated for this stage
-    max_amount = models.FloatField(default=0.0)
+    amount = models.FloatField(default=0.0)
     description = models.TextField(null=True, blank=True)  # Optional description of the stage
     sequence = models.PositiveIntegerField(default = 0)  # Order of the stage in the milestone
     start_date = models.DateField(blank=True, null=True)  # Optional start date

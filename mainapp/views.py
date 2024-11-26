@@ -117,6 +117,7 @@ class MSAPIModule(APIView):
                     get_obj = MSRegistration.objects.get(mservice_id=ms_id)
                     ms_function = get_obj.mservice_name
                     get_module_name = get_module_msid_wise(ms_id)
+                    print('get_module_name',get_module_name,ms_function)
                     my_function = call_all_function(get_module_name, str(ms_function))
                     if my_function:
                         try:

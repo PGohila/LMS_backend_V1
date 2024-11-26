@@ -3668,11 +3668,13 @@ def stages_setup_delete(stages_id):
     except Exception as e:
         return error(f"An error occurred: {e}") 
 
-def create_loanvaluechain(company_id):
+def create_loanvaluechain(company_id,loanapp_id):
     try:
-        records = Loan.objects.filter(company_id = company_id,loanapp_id__disbursement_type = 'trenches')
+        records = Loan.objects.filter(company_id = company_id,loanapp_id__disbursement_type = 'trenches',id=loanapp_id)
+        print('records',records)
         for data in records:
             valuechain = ValueChainSetUps.objects.filter(loan_type_id = data.loanapp_id.loantype.id)
+            print('valuechain',valuechain)
             for data1 in valuechain: # looping valuechain
                 # Generate a unique offer ID
                 chainid = LoanValuechain.objects.last()
@@ -3725,10 +3727,109 @@ def create_loanvaluechain(company_id):
                             description = data3.description,  # Optional description of the stage
                             sequence = 1,
                         )
+            data.disbursement_trenches = True
+            data.save()
 
         return success("success")
     except Exception as e:
         return error(f"An error occurred: {e}") 
+
+
+def loan_detail_value_chain_get(loanapp_id):
+    try:
+        loanchain_records = LoanValuechain.objects.filter(loan_id=loanapp_id)
+        print('loanchain_records',loanchain_records)
+        loan_valuechain_data = LoanValuechainSerializer(loanchain_records,many=True)
+        for data in loan_valuechain_data.data:
+            milestone_records = LoanMilestone.objects.filter(valuechain_id=data.get('id'))
+            data['milestone'] = LoanMilestoneSerializer(milestone_records,many=True).data
+            for milestone in data['milestone']:
+                milestone_records = LoanMilestoneStages.objects.filter(milestone_id=milestone.get('id'))
+                milestone['activity'] = LoanMilestoneStagesSerializer(milestone_records,many=True).data
+        print('loan_valuechain_data.data',loan_valuechain_data.data,'\n\n\n\n')
+        return success(loan_valuechain_data.data)
+    except Exception as e:
+        return error(f"An error occurred: {e}") 
+
+
+def value_chain_edit_v1(value_chain_id,amount):
+    try:
+        records = LoanMilestone.objects.filter(id=value_chain_id)
+        if records.exists():
+            record = records.last()
+            record.amount = amount
+            record.save()
+        return success('Updated successfully')
+    except Exception as e:
+        return error(f"An error occurred: {e}")
+
+def value_chain_delete_v1(value_chain_id):
+    try:
+        records = LoanMilestone.objects.filter(id=value_chain_id)
+        if records.exists():
+            records.last().delete()
+        return success('deleted successfully')
+    except Exception as e:
+        return error(f"An error occurred: {e}")
+
+def milstone_edit_v1(milestone_id,amount):
+    try:
+        records = LoanMilestone.objects.filter(id=milestone_id)
+        if records.exists():
+            record = records.last()
+            record.amount = amount
+            record.save()
+        return success('Updated successfully')
+    except Exception as e:
+        return error(f"An error occurred: {e}")
+
+def milstone_delete_v1(activity_id):
+    try:
+        records = LoanMilestoneStages.objects.filter(id=activity_id)
+        if records.exists():
+            records.last().delete()
+        return success('deleted successfully')
+    except Exception as e:
+        return error(f"An error occurred: {e}")
+
+
+def milstone_activity_edit_v1(activity_id,amount):
+    try:
+        records = LoanMilestoneStages.objects.filter(id=activity_id)
+        if records.exists():
+            record = records.last()
+            record.amount = amount
+            record.save()
+        return success('Updated successfully')
+    except Exception as e:
+        return error(f"An error occurred: {e}")
+
+def milstone_activity_delete_v1(milestone_id):
+    try:
+        records = LoanMilestone.objects.filter(id=milestone_id)
+        if records.exists():
+            records.last().delete()
+        return success('deleted successfully')
+    except Exception as e:
+        return error(f"An error occurred: {e}")
+
+
+def milstone_activity_create_v1(milestone_id,activity_name,amount,description=None,start_date=None,end_date=None):
+    try:
+        milestone = LoanMilestone.objects.get(id=milestone_id)
+        records = LoanMilestoneStages.objects.create(
+            company=milestone.company,
+            loan=milestone.loan,
+            milestone_id=milestone,
+            stage_name=activity_name,
+            amount=amount,
+            description=description,
+            start_date=start_date,
+            end_date=end_date,
+            )
+        return success('Created successfully')
+    except Exception as e:
+        return error(f"An error occurred: {e}")
 
 
 # def update_loan(loan_id,company_id=None, loanid=None, customer_id=None, loan_amount=None, loan_date=None, loan_term=None, interest_rate=None, status=None):
