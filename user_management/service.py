@@ -42,6 +42,7 @@ def get_user(id=None):
 
 def change_password(user_id, old_password, new_password, confirm_password):
     try:
+        print("Enter change Password")
         user = User.objects.get(id=user_id)
         if not check_password(old_password, user.password):
             return error("Old password is incorrect.")
@@ -58,7 +59,10 @@ def change_password(user_id, old_password, new_password, confirm_password):
 
 def forgot_password(email):
     try:
+        
+        print("Enter OTP Function")
         user = User.objects.get(email=email)
+        print('user',user)
         generate_and_send_otp(user)
         return success("OTP send successfully.")
     except User.DoesNotExist:
@@ -85,6 +89,7 @@ def verify_forgot_password(email,otp):
 
 def set_password(email,new_password, confirm_password):
     try:
+        print("Enter Set Password")
         user = User.objects.get(email=email)
         if new_password != confirm_password:
             return error("New password and confirm password do not match.")
@@ -112,11 +117,6 @@ def user_registration(first_name, last_name, email, phone_number, password,user_
             # maker=maker,
             # checker=checker
         )
-        name = "Mathan"
-        channel_id =2
-        template_id = "TMP25112404233807"	
-        message = "User Created Successfully"
-        recipient = "+919042757290"
         return success(f'Successfully created {instance} ')
     
     except User.DoesNotExist:
@@ -447,6 +447,7 @@ def multi_factor_authentication(otp=None):
 
 
 def generate_and_send_otp(user=None):
+    print("enter otp")
     if user is None:
         request = get_current_request()
     
@@ -455,12 +456,14 @@ def generate_and_send_otp(user=None):
         user = request.user
     otp_record = OTP.objects.create(user=user)
     otp_code = otp_record.otp
-    send_otp_to_user(otp_code)
+    print('otp_code',otp_code)
+    send_otp_to_user(otp_code,user)
     return success('OTP generated successfully')
 
 import requests
 
 def get_access_token():
+    print("enter access function")
     url = "https://genericdelivery.pythonanywhere.com/api/token/"
     payload = {
         "email": EMAIL,
@@ -474,11 +477,13 @@ def get_access_token():
     return access_data.get('access')
     
 
-def send_otp_to_user( otp_code):
-    request = get_current_request()
-    if not request.user.is_authenticated:
-        return error('Login required')
-    user = request.user
+def send_otp_to_user(otp_code,user):
+    if user is None:
+        request = get_current_request()
+        if not request.user.is_authenticated:
+            return error('Login required')
+        user = request.user
+    
     access_token = get_access_token()
     print('access_token',access_token)
 
@@ -502,7 +507,7 @@ def send_otp_to_user( otp_code):
     response = requests.post(url, json=payload, headers=headers)
     
     if response.status_code == 200:
-        return success("OTP sent successfully!")
+        return success("OTP mail sent successfully!")
     else:
         return success(f"Failed to send OTP. Status Code: {response.status_code}, Response: {response.text}")
 

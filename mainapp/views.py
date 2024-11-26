@@ -206,6 +206,55 @@ class EDMSModule(APIView):
             print('error main excepiton ',error)
             return Response(data=str(error),status=status.HTTP_404_NOT_FOUND)                       
 
+
+class MSAPIPASS(APIView):
+    
+    serializer_class = MSSerializer
+
+    def post(self, request, *args, **kwargs):
+        try:
+            serializers = MSSerializer(data=request.data)
+            if serializers.is_valid():
+                ms_id = serializers.data['ms_id']
+                ms_payload = serializers.data['ms_payload']
+                if request.FILES:
+                    attachments = request.FILES.keys()
+                    for key in attachments:
+                        ms_payload[key] = request.data.get(str(key))
+                get_response = check_ms_id_exists_or_not(ms_id)
+                get_ms_payload = payload_key_validation(ms_id, ms_payload)
+                if get_response == 'valid_ms_id':
+                    get_obj = MSRegistration.objects.get(mservice_id=ms_id)
+                    ms_function = get_obj.mservice_name
+                    get_module_name = get_module_msid_wise(ms_id)
+                    my_function = call_all_function(get_module_name, str(ms_function))
+                    if my_function:
+                        try:
+                            fun_response = my_function(**ms_payload)
+                            print('fun_response', fun_response)
+                            if fun_response['status_code'] == 0:
+                                data = fun_response['data']
+                                if not isinstance(data, list):
+                                    data = [data]
+                                return Response(data=data, status=status.HTTP_200_OK)
+                            else:
+                                return Response(data=fun_response['data'], status=status.HTTP_403_FORBIDDEN)
+                        except Exception as error:
+                            print('error in function call:', error)
+                            return Response({'error': str(error)}, status=status.HTTP_404_NOT_FOUND)
+                    else:
+                        print('Function Import Error')
+                        return Response({'error': 'Function Import Error'}, status=status.HTTP_404_NOT_FOUND)
+                else:
+                    print('get_response', get_response)
+                    return Response({'error': get_response}, status=status.HTTP_404_NOT_FOUND)
+            else:
+                return Response(serializers.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as error:
+            print('error in main exception:', error)
+            return Response({'error': str(error)}, status=status.HTTP_404_NOT_FOUND)
+   
+
 @api_view(['POST'])
 def login_view(request):
     email = request.data.get('email')
@@ -261,44 +310,3 @@ def get_permissions_for_session(user):
     except Exception as e:
         return error(str(e))
 
-
-def forgot_password(email):
-    try:
-        user = User.objects.get(email=email)
-        generate_and_send_otp(user)
-        return success("Password changed successfully.")
-    except User.DoesNotExist:
-        return error("User does not exist.")
-    except Exception as e:
-        return error(f"An error occurred: {e}")
-
-def verify_forgot_password(email,otp):
-    try:
-        user = User.objects.get(email=email)
-        otp_record = OTP.objects.filter(user=user,status = 'UNUSED').order_by('-created_at').first()
-        if otp_record.otp != otp:
-            return error('Invalid OTP')
-        otp_record.status = 'USED'
-        otp_record.save()
-
-        return success("OTP Verification successfully.")
-    except User.DoesNotExist:
-        return error("User does not exist.")
-    except OTP.DoesNotExist:
-        return error("User does not exist.")
-    except Exception as e:
-        return error(f"An error occurred: {e}")
-
-def set_password(email,new_password, confirm_password):
-    try:
-        user = User.objects.get(email=email)
-        if new_password != confirm_password:
-            return error("New password and confirm password do not match.")
-        user.password = make_password(new_password)
-        user.save()
-        return success("Password changed successfully.")
-    except User.DoesNotExist:
-        return error("User does not exist.")
-    except Exception as e:
-        return error(f"An error occurred: {e}")
-    

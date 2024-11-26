@@ -6,6 +6,8 @@ import requests
 from lms_backend import settings
 from mainapp.common import log_audit_trail
 from mainapp.dms import create_entity, create_folder_for_all_customer, document_upload_audit, document_upload_history, is_valid_current_datetime, unique_id_generate_doc
+from user_management.service import generate_and_send_otp
+from django.contrib.auth.hashers import make_password,check_password
 from .models import *
 from .serializers import *
 from .middleware import get_current_request
@@ -799,12 +801,14 @@ def loan_approval(company_id,loanapp_id, approval_status = None,rejected_reason 
 
             # create loan
             loan = create_loan(loanapp_id)
+            loans = Loan.objects.get(pk=loan['data'])
             
+            print("loans.loan_id",loans.loan_id)
             loan_id = loan['data']
             END_POINT = "loan-account-create/"
             data = {
-                    "loan_id": loan_id,
-                    "loan_no": loan_id,
+                    "loan_id": loans.loan_id,
+                    "loan_no": loans.loan_id,
                     "description": "Create Loan Account"
                 }
             response = post_method(data,BASE_URL,END_POINT)
@@ -954,35 +958,45 @@ def loan_approval(company_id,loanapp_id, approval_status = None,rejected_reason 
         return error(f"An error occurred: {e}")
     # For approval Loans
 def account_list(loan_id):
+    BASE_URL = "https://bbaccountingtest.pythonanywhere.com/loan-setup/"
     try:
         request = get_current_request()
         if not request.user.is_authenticated:
-            return error('Login required')    
+            return error('Login required') 
+
+
+        END_POINT = f"loan-account-get/{loan_id}"
+            
+        response = get_method(BASE_URL,END_POINT)
+
+        account_data  = response
+        print('account_data--',account_data)   
         
-        record = LoanAccount.objects.get(loan_id=loan_id)
-        LoanAccount_record = LoanAccountSerializer(record).data
-        print('LoanAccount_record',LoanAccount_record)
-
-        record = LoanDisbursementAccount.objects.get(loan_id=loan_id)
-        loandisbursement_record = LoanDisbursementAccountSerializer(record).data
-        
-        record = LoanRepaymentAccount.objects.get(loan_id=loan_id)
-        loanrepaymentaccount_record = LoanRepaymentAccountSerializer(record).data
-
-        record = PenaltyAccount.objects.get(loan_id=loan_id)
-        penaltyaccount_record = PenaltyAccountSerializer(record).data
-
-        record = InterestAccount.objects.get(loan_id=loan_id)
-        interestaccount_record = InterestAccountSerializer(record).data
 
         records = {
-            "LoanAccount_record":LoanAccount_record,
-            "loandisbursement_record":loandisbursement_record,
-            "loanrepaymentaccount_record":loanrepaymentaccount_record,
-            "penaltyaccount_record":penaltyaccount_record,
-            "interestaccount_record":interestaccount_record,
-
+            "LoanAccount_record": None,
+            "loandisbursement_record": None,
+            "loanrepaymentaccount_record": None,
+            "penaltyaccount_record": None,
+            "interestaccount_record": None,
         }
+
+        # Iterate over the account data and assign the data to the corresponding category
+        for account in account_data:
+            if account['account_category'] == 'Loan':
+                records["LoanAccount_record"] = account
+            elif account['account_category'] == 'Loan Disbursement':
+                records["loandisbursement_record"] = account
+            elif account['account_category'] == 'Interest Income':
+                records["interestaccount_record"] = account
+            elif account['account_category'] == 'Penalty Fees/Income':
+                records["penaltyaccount_record"] = account
+            elif account['account_category'] == 'Cash/Bank':
+                records["loanrepaymentaccount_record"] = account
+
+        # Output the transformed records dictionary
+        
+
         return success(records)
 
     except LoanAccount.DoesNotExist:
