@@ -271,3 +271,19 @@ class AuditTrailSerializer(serializers.ModelSerializer):
     class Meta:
         model = AuditTrail
         fields = '__all__'    
+
+
+class LoanValuechainSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = LoanValuechain
+        fields = '__all__'
+
+class LoanMilestoneStagesSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = LoanMilestoneStages
+        fields = '__all__'
+
+class LoanMilestoneSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = LoanMilestone
+        fields = '__all__'
