@@ -215,3 +215,9 @@ class DocumentUploadHistorySerializer(serializers.ModelSerializer):
     class Meta:
         model = DocumentUploadHistory
         fields = '__all__'       
+
+
+class TemplateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Template
+        fields = '__all__'       

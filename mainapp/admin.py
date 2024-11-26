@@ -76,7 +76,7 @@ class CollateralsAdmin(admin.ModelAdmin):
 
 @admin.register(LoanAgreement)
 class LoanagreementAdmin(admin.ModelAdmin):
-    list_display = ['company', 'agreement_id', 'loanapp_id', 'customer_id', 'agreement_terms', 'signed_at', 'agreement_date', 'borrower_signature', 'agreement_status', 'lender_signature', 'maturity_date']
+    list_display = ['company', 'agreement_id', 'loanapp_id', 'customer_id','signed_at', 'agreement_date', 'borrower_signature', 'agreement_status', 'lender_signature', 'maturity_date']
     
 @admin.register(LoanClosure)
 class LoanclosureAdmin(admin.ModelAdmin):

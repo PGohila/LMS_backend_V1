@@ -905,7 +905,7 @@ def getting_approved_loanapp_records(company_id):
         return error(f"An error occurred: {e}")
 
 
-def create_loanagreement(company_id,loan_id, loanapp_id, customer_id, agreement_terms,is_active=False,attachment=None,attachment1=None,maturity_date=None):
+def create_loanagreement(company_id,loan_id, loanapp_id, customer_id, agreement_template,agreement_template_value=None):
     try:
         request = get_current_request()
         if not request.user.is_authenticated:
@@ -933,31 +933,29 @@ def create_loanagreement(company_id,loan_id, loanapp_id, customer_id, agreement_
             loan_id_id = loan_id,
             loanapp_id_id = loanapp_id,
             customer_id_id=customer_id,
-            agreement_terms=agreement_terms,
-            borrower_signature = attachment,
-            lender_signature = attachment1,
-            maturity_date = maturity_date,
+            agreement_template_id=agreement_template,
+            agreement_template_value=agreement_template_value,
             agreement_status = 'Active',
-            is_active = is_active,
+            is_active = True,
         )
 
         # update the workflow status in loan application and loan table
-        loanapp = LoanApplication.objects.get(pk=loanapp_id)
-        loan = Loan.objects.get(pk = loan_id)
-        if attachment1 and attachment:
-            loanapp.workflow_stats = "Borrower_and_Lender_Approved"
-            loan.workflow_stats = "Borrower_and_Lender_Approved"
-        elif attachment:
-            loanapp.workflow_stats = "Borrower_Approved"
-            loan.workflow_stats = "Borrower_Approved"
-        elif attachment1:
-            loanapp.workflow_stats = "Lender_Approved"
-            loan.workflow_stats = "Lender_Approved"
-        else:
-            loanapp.workflow_stats = "Borrower_and_Lender_Approved" # Approved
-            loan.workflow_stats = "Borrower_and_Lender_Approved"
-        loanapp.save()
-        loan.save()
+        # loanapp = LoanApplication.objects.get(pk=loanapp_id)
+        # loan = Loan.objects.get(pk = loan_id)
+        # if attachment1 and attachment:
+        #     loanapp.workflow_stats = "Borrower_and_Lender_Approved"
+        #     loan.workflow_stats = "Borrower_and_Lender_Approved"
+        # elif attachment:
+        #     loanapp.workflow_stats = "Borrower_Approved"
+        #     loan.workflow_stats = "Borrower_Approved"
+        # elif attachment1:
+        #     loanapp.workflow_stats = "Lender_Approved"
+        #     loan.workflow_stats = "Lender_Approved"
+        # else:
+        #     loanapp.workflow_stats = "Borrower_and_Lender_Approved" # Approved
+        #     loan.workflow_stats = "Borrower_and_Lender_Approved"
+        # loanapp.save()
+        # loan.save()
 
         try:
             log_audit_trail(request.user.id,'Loan Agreement Registration', instance, 'Create', 'Object Created.')
@@ -4016,3 +4014,41 @@ def document_delete(document_id):
         return error('document_id is invalid')
     except Exception as e:
         return error(str(e))
+
+
+
+def template_create(template_name,content):
+    try:
+        request = get_current_request()
+        if not request.user.is_authenticated:
+            return error('Login requried')
+
+        record = Template.objects.create(
+                template_name=template_name,
+                content=content,
+                created_by=request.user,
+                updated_by=request.user,
+            )
+        try:
+            log_audit_trail(request.user.id,'Template Registration', record, 'Create', 'Object Created.')
+        except Exception as e:
+            return error(f"An error occurred: {e}")
+
+        return success('Template create successfully')
+    except Exception as e:
+        return error(e)
+    
+
+def view_template(template_id=None):
+    try:
+        if template_id:
+            template = Template.objects.get(pk=template_id)
+            serializer = TemplateSerializer(template)
+        template = Template.objects.all()
+        serializer = TemplateSerializer(template,many=True)
+        return success(serializer.data)
+
+    except Template.DoesNotExist:
+        return error(f"Template with ID {template_id} not found")
+    except Exception as e:
+        return error(f"An error occurred: {e}")
