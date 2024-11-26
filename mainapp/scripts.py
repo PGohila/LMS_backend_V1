@@ -88,6 +88,7 @@ def check_loan_eligibility(applicant_details, loan_amount):
     
     # Debt-to-income ratio check
     debt_to_income_ratio = (applicant_details.existing_liabilities / applicant_details.customer_income) * 100
+    print("===================",debt_to_income_ratio)
     if debt_to_income_ratio > 40:  # Example threshold
         errors.append("Debt-to-income ratio exceeds the allowable limit of 40%.")
     

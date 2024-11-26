@@ -164,6 +164,25 @@ class Customer(models.Model):
     def __str__(self):
         return self.customer_id
 
+class CustomerAccount(models.Model):
+    company = models.ForeignKey(Company,on_delete=models.CASCADE, related_name='%(class)s_company')
+    customer = models.ForeignKey('Customer', on_delete=models.CASCADE)
+    account_number = models.CharField(max_length=20, unique=True)
+    bank_name = models.CharField(max_length=100)
+    branch_name = models.CharField(max_length=100, blank=True, null=True)
+    ifsc_code = models.CharField(max_length=11, blank=True, null=True)  # For Indian banks, or SWIFT code for international banks
+    account_balance = models.FloatField(default = 0.0)
+    account_status = models.CharField(
+        max_length=50,
+        choices=[('active', 'Active'), ('inactive', 'Inactive')],
+        default='active'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f'{self.account_number}'
+
 class CustomerDocuments(models.Model):
     company = models.ForeignKey(Company,on_delete=models.CASCADE, related_name='%(class)s_company')
     customer_id = models.ForeignKey(Customer,on_delete=models.CASCADE, related_name='%(class)s_customers')
@@ -469,7 +488,27 @@ class LoanMilestoneStages(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True) 
 
-
+class CentralFundingAccount(models.Model):
+    company = models.ForeignKey('Company', on_delete=models.CASCADE)
+    account_name = models.CharField(max_length=255)
+    account_no = models.CharField(max_length=255)
+    account_type = models.CharField(max_length=50, choices=[
+        ('checking', 'Checking'),
+        ('savings', 'Savings'),
+        ('investment', 'Investment'),
+    ])
+    account_balance = models.FloatField(default=0.0) 
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    funding_source = models.CharField(max_length=255, blank=True, null=True)
+    status = models.CharField(max_length=50, choices=[
+        ('active', 'Active'),
+        ('inactive', 'Inactive'),
+        ('suspended', 'Suspended'),
+    ])
+    notes = models.TextField(blank=True, null=True)
+    def __str__(self):
+        return f'{self.account_name}'
     
 # This is the main account for tracking principal, interest, and penalties for each loan
 class LoanAccount(models.Model):
@@ -517,7 +556,6 @@ class LoanRepaymentAccount(models.Model):
     def __str__(self):
         return f"Repayment for Loan {self.loan.id}"
     
-
 
 # This is the main account for tracking principal, interest, and penalties for each loan
 class PenaltyAccount(models.Model):
