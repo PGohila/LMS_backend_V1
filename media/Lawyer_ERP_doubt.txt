@@ -1,0 +1,19 @@
+﻿Lawyer ERP
+Meeting Agenda with Andrew
+Topics:
+1. Default Privileges for Matter
+2. Time Sheet Approval
+3. DMS Email Integration
+4. Report Formats
+Default Privileges for Matter- page No 72: 
+* Default privileges for that matter.
+Time Sheet Approval-Page No -83: 
+* Approval may happen on a given cycle, say weekly (may be user based) or at point of billing (Matter based).
+DMS Email Integration-Page No 107:
+*  EMail Management to include filing the EMail Document to an appropriate space in the DMS and making it as such and maintaining the thread. It also allows de-duplication of filing e.g., if an email is received by a team on internal staff working on the matter, once it is filed in the appropriate matter folder it should be marked as filed on all these members and attempts to file it are just ignored.
+Report Formats-Page No-78: (We would like all report formats to be provided)
+* Others matter-related reporting include:
+* a. Utilization
+* b. Realization
+* c. Profitability
+* d. Leverage

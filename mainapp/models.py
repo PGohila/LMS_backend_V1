@@ -1,3 +1,4 @@
+from datetime import datetime
 from django.db import models
 from django.contrib.auth.models import User
 from django.contrib.contenttypes.fields import GenericForeignKey
@@ -369,30 +370,111 @@ class Loan(models.Model):
     is_active = models.BooleanField(default=True)
     def __str__(self):
         return f"Loan {self.loan_id}"
-    
-class ValueChain(models.Model):
-    id = models.AutoField(primary_key=True)
-    loan_application = models.ForeignKey('LoanApplication', on_delete=models.CASCADE)
-    status = models.CharField(max_length=50, choices=[
-        ('applied', 'Applied'),
-        ('under_review', 'Under Review'),
-        ('approved', 'Approved'),
-        ('disbursed', 'Disbursed'),
-        ('completed', 'Completed'),
-        ('rejected', 'Rejected'),
-    ])
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    notes = models.TextField(blank=True, null=True)
-    risk_score = models.FloatField(default=0.0)
-    risk_factor = models.CharField(max_length=100, blank=True, null=True)
 
+class ValueChainSetUps(models.Model):
+    company = models.ForeignKey(Company, on_delete=models.CASCADE)
+    unique_id = models.CharField(max_length=100,unique=True)
+    loan_type = models.ForeignKey(LoanType, on_delete=models.CASCADE)
+    valuechain_name = models.CharField(max_length=500)
+    max_amount  = models.FloatField(default= 0.0)
+    min_amount = models.FloatField(default=0.0)
+    description = models.TextField(blank=True,null=True)
+    status = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)    
     def __str__(self):
-        return f'Value Chain for Loan {self.loan_application.id} - Status: {self.status}'
+        return f"{self.valuechain_name}"
+
+class MilestoneSetUp(models.Model):
+    company = models.ForeignKey(Company, on_delete=models.CASCADE)
+    unique_id = models.CharField(max_length=100,unique=True)
+    loan_type = models.ForeignKey(LoanType, on_delete=models.CASCADE)
+    valuechain_id = models.ForeignKey(ValueChainSetUps,on_delete=models.CASCADE)
+    milestone_name = models.CharField(max_length=500)
+    max_amount  = models.FloatField(default=0.0)
+    min_amount = models.FloatField(default=0.0)
+    description = models.TextField(blank=True,null=True)
+    status = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True) 
+    def __str__(self):
+        return f"{self.milestone_name}"
+
+class MilestoneStagesSetup(models.Model):
+    company = models.ForeignKey(Company, on_delete=models.CASCADE)
+    milestone_id = models.ForeignKey(MilestoneSetUp,on_delete=models.CASCADE)
+    stage_name = models.CharField(max_length=500)
+    min_amount = models.FloatField(default=0.0)  # Amount allocated for this stage
+    max_amount = models.FloatField(default=0.0)
+    description = models.TextField(null=True, blank=True)  # Optional description of the stage
+    sequence = models.PositiveIntegerField(default = 1)  # Order of the stage in the milestone
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True) 
+
+# actual value chain for loan application
+class LoanValuechain(models.Model):
+    company = models.ForeignKey(Company, on_delete=models.CASCADE)
+    loan = models.ForeignKey(Loan, on_delete=models.CASCADE,related_name = '%(class)s_loan')
+    unique_id = models.CharField(max_length=100,unique=True)
+    loan_type = models.ForeignKey(LoanType, on_delete=models.CASCADE)
+    valuechain_name = models.CharField(max_length=500)
+    amount  = models.FloatField(default= 0.0)
+    description = models.TextField(blank=True,null=True)
+    start_date = models.DateField(blank=True, null=True)  # Optional start date
+    end_date = models.DateField(blank=True, null=True)  # Optional end date
+    active = models.BooleanField(default=False)
+    due_date = models.DateField(blank=True, null=True)  # Expected completion date
+    actual_completion_date = models.DateField(blank=True, null=True)  # When milestone was completed
+    sequence = models.PositiveIntegerField()  # Order of milestones
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)    
+    def __str__(self):
+        return f"{self.valuechain_name}"
+     
+class LoanMilestone(models.Model):
+    company = models.ForeignKey(Company, on_delete=models.CASCADE)
+    loan = models.ForeignKey(Loan, on_delete=models.CASCADE,related_name = '%(class)s_loan')
+    unique_id = models.CharField(max_length=100,unique=True)
+    loan_type = models.ForeignKey(LoanType, on_delete=models.CASCADE)
+    valuechain_id = models.ForeignKey(LoanValuechain,on_delete=models.CASCADE)
+    milestone_name = models.CharField(max_length=500)
+    max_amount  = models.FloatField(default=0.0)
+    description = models.TextField(blank=True,null=True)
+    active = models.BooleanField(default=False)
+    due_date = models.DateField(blank=True, null=True)  # Expected completion date
+    actual_completion_date = models.DateField(blank=True, null=True)  # When milestone was completed
+    sequence = models.PositiveIntegerField()  # Order of milestones
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True) 
+    def __str__(self):
+        return f"{self.milestone_name}"
+
+class LoanMilestoneStages(models.Model):
+    company = models.ForeignKey(Company, on_delete=models.CASCADE)
+    loan = models.ForeignKey(Loan, on_delete=models.CASCADE,related_name = '%(class)s_loan')
+    milestone_id = models.ForeignKey(LoanMilestone,on_delete=models.CASCADE)
+    stage_name = models.CharField(max_length=500)
+    min_amount = models.FloatField(default=0.0)  # Amount allocated for this stage
+    max_amount = models.FloatField(default=0.0)
+    description = models.TextField(null=True, blank=True)  # Optional description of the stage
+    sequence = models.PositiveIntegerField(default = 0)  # Order of the stage in the milestone
+    start_date = models.DateField(blank=True, null=True)  # Optional start date
+    end_date = models.DateField(blank=True, null=True)  # Optional end date
+    status = models.CharField(
+        max_length=50, 
+        choices=[("Pending", "Pending"), ("In Progress", "In Progress"), ("Completed", "Completed")], 
+        default="Pending"
+    )  # Stage status
+    actual_completion_date = models.DateField(blank=True, null=True)  # Completion date
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True) 
+
+
     
 # This is the main account for tracking principal, interest, and penalties for each loan
 class LoanAccount(models.Model):
     company = models.ForeignKey(Company,on_delete=models.CASCADE, related_name='%(class)s_company')
+    account_no = models.CharField(max_length=50)
     loan = models.OneToOneField(Loan, on_delete = models.CASCADE, related_name="loan_detail5")
     principal_amount = models.FloatField(default = 0.0)
     interest_amount = models.FloatField(default = 0.0)
@@ -407,6 +489,7 @@ class LoanAccount(models.Model):
 # This model tracks the disbursement of funds for each loan. each loan have disbursement account
 class LoanDisbursementAccount(models.Model):
     company = models.ForeignKey(Company,on_delete=models.CASCADE, related_name='%(class)s_company')
+    account_no = models.CharField(max_length=50)
     loan = models.OneToOneField(Loan, on_delete=models.CASCADE, related_name="loan_detail4")
     amount = models.FloatField(default=0.0)
     milestone_account = models.ForeignKey('MilestoneAccount', on_delete=models.SET_NULL, null=True, blank=True)
@@ -422,6 +505,7 @@ class LoanDisbursementAccount(models.Model):
 # This model handles all repayments made by the borrower.
 class LoanRepaymentAccount(models.Model):
     company = models.ForeignKey(Company,on_delete=models.CASCADE, related_name='%(class)s_company')
+    account_no = models.CharField(max_length=50)
     loan = models.OneToOneField(Loan, on_delete=models.CASCADE, related_name="loan_detail3")
     repayment_date = models.DateTimeField(auto_now_add=True)
     amount = models.FloatField(default=0.0)
@@ -438,6 +522,7 @@ class LoanRepaymentAccount(models.Model):
 # This is the main account for tracking principal, interest, and penalties for each loan
 class PenaltyAccount(models.Model):
     company = models.ForeignKey(Company,on_delete=models.CASCADE, related_name='%(class)s_company')
+    account_no = models.CharField(max_length=50)
     loan = models.OneToOneField(Loan, on_delete=models.CASCADE, related_name="loan_detail2")
     penalty_date = models.DateTimeField(auto_now_add=True)
     penalty_amount = models.FloatField(default=0.0)
@@ -452,6 +537,7 @@ class PenaltyAccount(models.Model):
 # This handles the recording of interest accruals and payments.
 class InterestAccount(models.Model):
     company = models.ForeignKey(Company,on_delete=models.CASCADE, related_name='%(class)s_company')
+    account_no = models.CharField(max_length=50)
     loan = models.OneToOneField(Loan, on_delete=models.CASCADE, related_name="loan_detail")
     interest_accrued = models.FloatField(default=0.0)
     interest_payment_date = models.DateField(null=True, blank=True)
@@ -466,7 +552,7 @@ class InterestAccount(models.Model):
 class MilestoneAccount(models.Model):
     company = models.ForeignKey(Company,on_delete=models.CASCADE, related_name='%(class)s_company')
     loan = models.OneToOneField(Loan, on_delete=models.CASCADE, related_name="loan_detail1")
-    milestone_header = models.ForeignKey('ValueChain', on_delete=models.CASCADE)  # This is the value chain or scheme-based identifier
+    milestone_header = models.ForeignKey('LoanValuechain', on_delete=models.CASCADE)  # This is the value chain or scheme-based identifier
     milestone_cost = models.FloatField(default=0.0)
     disbursement_date = models.DateTimeField(auto_now_add=True)
     status = models.CharField(max_length=50, default='pending', choices=[('pending', 'Pending'), ('completed', 'Completed')])
@@ -771,34 +857,29 @@ class DocumentType(models.Model):
 	update_by = models.ForeignKey(User, on_delete=models.CASCADE, blank=True, null=True,related_name="DocumentType_update_by")
 	update_at = models.DateTimeField(auto_now=True)  
 
-class Department(models.Model):
-	department_name = models.CharField(max_length=100)
-	description = models.TextField(blank=True,null=True)
-	created_by = models.ForeignKey(User, on_delete=models.CASCADE,related_name="Department_created_by")
-	created_at = models.DateTimeField(auto_now_add=True)
-	update_by = models.ForeignKey(User, on_delete=models.CASCADE, blank=True, null=True,related_name="Department_update_by")
-	update_at = models.DateTimeField(auto_now=True) 
 
 class DocumentCategory(models.Model):
 	category_name = models.CharField(max_length=100, unique=True)
-	department = models.ForeignKey(Department, on_delete=models.CASCADE)
 	description = models.TextField(blank=True,null=True)
 	created_by = models.ForeignKey(User, on_delete=models.CASCADE,related_name="DocumentCategory_created_by")
 	created_at = models.DateTimeField(auto_now_add=True)
 	update_by = models.ForeignKey(User, on_delete=models.CASCADE, blank=True, null=True,related_name="DocumentCategory_update_by")
 	update_at = models.DateTimeField(auto_now=True)
  
+from django.db import models
+import datetime
+
 class DocumentUpload(models.Model):
+	company=models.ForeignKey(Company, on_delete=models.CASCADE,blank=True, null=True)
 	document_id=models.CharField(max_length=100, primary_key=True)
 	document_title=models.CharField(max_length=100,blank=False,null=False)
-	document_category=models.ForeignKey(DocumentCategory,on_delete=models.CASCADE)
-	document_type=models.ForeignKey(DocumentType,on_delete=models.CASCADE)
+	document_type=models.ForeignKey(IdentificationType,on_delete=models.CASCADE,blank=True, null=True)
 	entity_type=models.ManyToManyField(CustomDocumentEntity,blank=True)
 	folder=models.ForeignKey(FolderMaster,on_delete=models.CASCADE,blank=True, null=True)
 	document_size=models.PositiveBigIntegerField(blank=True,null=True)
 	description = models.TextField(blank=True, null=True)
 	document_upload = models.FileField(blank=True, null=True)
-	upload_date = models.DateField(blank=True,null=True)
+	upload_date = models.DateField(blank=True, null=True, default=datetime.date.today)
 	expiry_date= models.DateField(blank=True,null=True)
 	start_date=models.DateField(blank=True,null=True)
 	end_date=models.DateField(blank=True,null=True)
@@ -824,14 +905,12 @@ class DocumentAccess(models.Model):
 class DocumentUploadHistory(models.Model):
 	document_id=models.CharField(max_length=100,blank=False,null=False)
 	document_title=models.CharField(max_length=100,blank=False,null=False)
-	document_category=models.ForeignKey(DocumentCategory,on_delete=models.CASCADE)
-	document_type=models.ForeignKey(DocumentType,on_delete=models.CASCADE)
-	entity_type=models.ManyToManyField(CustomDocumentEntity,blank=True)
+	document_type=models.ForeignKey(IdentificationType,on_delete=models.CASCADE,blank=True, null=True)
 	folder=models.ForeignKey(FolderMaster,on_delete=models.CASCADE,blank=True, null=True)
 	document_size=models.PositiveBigIntegerField(blank=True,null=True)
 	description = models.TextField(blank=True, null=True)
 	document_upload = models.FileField(blank=True, null=True)
-	upload_date = models.DateField(blank=True,null=True)
+	upload_date = models.DateField(blank=True, null=True, default=datetime.date.today)
 	expiry_date= models.DateField(blank=True,null=True)
 	start_date=models.DateField(blank=True,null=True)
 	end_date=models.DateField(blank=True,null=True)
@@ -843,14 +922,12 @@ class DocumentUploadHistory(models.Model):
 class DocumentUploadAudit(models.Model):
 	document_id=models.CharField(max_length=100,blank=False,null=False)
 	document_title=models.CharField(max_length=100,blank=False,null=False)
-	document_category=models.ForeignKey(DocumentCategory,on_delete=models.CASCADE)
-	document_type=models.ForeignKey(DocumentType,on_delete=models.CASCADE)
-	entity_type=models.ManyToManyField(CustomDocumentEntity,blank=True)
+	document_type=models.ForeignKey(IdentificationType,on_delete=models.CASCADE)
 	folder=models.ForeignKey(FolderMaster,on_delete=models.CASCADE,blank=True, null=True)
 	document_size=models.PositiveBigIntegerField(blank=True,null=True)
 	description = models.TextField(blank=True, null=True)
 	document_upload = models.FileField(blank=True, null=True)
-	upload_date = models.DateField(blank=True,null=True)
+	upload_date = models.DateField(blank=True, null=True, default=datetime.date.today)
 	expiry_date= models.DateField(blank=True,null=True)
 	start_date=models.DateField(blank=True,null=True)
 	end_date=models.DateField(blank=True,null=True)

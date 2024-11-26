@@ -134,11 +134,16 @@ class MilestoneAccountAdmin(admin.ModelAdmin):
 class LoanEntryAdmin(admin.ModelAdmin):
     list_display = ['company', 'loan','transaction_type', 'amount', 'transaction_date', 'transaction_reference']  
 
+admin.site.register (ValueChainSetUps)
+admin.site.register (MilestoneSetUp)
+admin.site.register (MilestoneStagesSetup)
+admin.site.register (LoanValuechain)
+admin.site.register (LoanMilestone)
+admin.site.register (LoanMilestoneStages)
 
 admin.site.register (CustomDocumentEntity)
 admin.site.register (FolderMaster)
 admin.site.register (DocumentType)
-admin.site.register (Department)
 admin.site.register (DocumentCategory)
 admin.site.register (DocumentUpload)
 admin.site.register (DocumentAccess)
