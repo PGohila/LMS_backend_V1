@@ -232,6 +232,36 @@ class DocumentUploadHistorySerializer(serializers.ModelSerializer):
         model = DocumentUploadHistory
         fields = '__all__'       
 
+class LoanAccountSerializer(serializers.ModelSerializer):
+    loan = LoanSerializer()
+    class Meta:
+        model = LoanAccount
+        fields = '__all__'    
+
+class LoanDisbursementAccountSerializer(serializers.ModelSerializer):
+    loan = LoanSerializer()
+    class Meta:
+        model = LoanDisbursementAccount
+        fields = '__all__'     
+
+class LoanRepaymentAccountSerializer(serializers.ModelSerializer):
+    loan = LoanSerializer()
+    class Meta:
+        model = LoanRepaymentAccount
+        fields = '__all__'     
+
+class PenaltyAccountSerializer(serializers.ModelSerializer):
+    loan = LoanSerializer()
+    class Meta:
+        model = PenaltyAccount
+        fields = '__all__'     
+
+class InterestAccountSerializer(serializers.ModelSerializer):
+    loan = LoanSerializer()
+    class Meta:
+        model = InterestAccount
+        fields = '__all__'     
+
 class AuditTrailSerializer(serializers.ModelSerializer):
     class Meta:
         model = AuditTrail
