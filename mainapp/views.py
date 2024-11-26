@@ -14,6 +14,9 @@ import inspect
 from datetime import datetime
 from rest_framework import permissions
 
+
+
+
 # MS setup views
 def common_response(status_code=0,message=None):
     response = {    
@@ -299,3 +302,11 @@ def set_password(email,new_password, confirm_password):
     except Exception as e:
         return error(f"An error occurred: {e}")
     
+    
+
+# from django.shortcuts import render
+# from django.http import JsonResponse
+# from datetime import datetime
+# from .models import LoanApplication
+
+

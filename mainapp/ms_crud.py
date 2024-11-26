@@ -618,6 +618,7 @@ def check_loan_eligibilities_forall(company_id):
 
             # Perform eligibility check
             is_eligible, errors = check_loan_eligibility(applicant_deatils, applications.loan_amount)
+            print("$$$$$$$$$",is_eligible)
             
             if is_eligible == True:
                 applications.is_eligible = True
@@ -3299,6 +3300,60 @@ def delete_repayment_schedule(repayment_schedule_id):
         return error(f"Repayment Schedule with ID {repayment_schedule_id} not found")
     except Exception as e:
         return error(f"An error occurred: {e}")
+    
+    
+#filter
+
+def filter_loan_applications(from_date, to_date):
+    try:
+
+        request = get_current_request()
+        if not request.user.is_authenticated:
+            return error('{"detail": "Authentication credentials were not provided."}')
+        
+
+        loan_application = LoanApplication.objects.filter(applied_at__range=[from_date, to_date])
+        print('££££££££££££££££££££££££££', from_date, to_date)
+        print("loan_application======", loan_application)
+        serializer = LoanapplicationSerializer(loan_application , many=True)
+
+        print("##########################",serializer.data)
+        return success(serializer.data)
+        
+    except LoanApplication.DoesNotExist:
+        return error(f'In that {from_date} Record not found')
+    except Exception as e:
+        return error(str(e))
+    
+    except Exception as e:
+        return error({"error": str(e)}, status=500)    
+    
+    
+    
+#report
+def repayment_report_fillter(date):
+    try:
+        print("datexxxxx", date)
+        request = get_current_request()
+        if not request.user.is_authenticated:
+            return error('{"detail": "Authentication credentials were not provided."}')
+        
+
+        repayment_fillter = RepaymentSchedule.objects.filter(repayment_date=date)
+        print("$$$$$$$$$$$$$$$$$$$$$$$$$",repayment_fillter) 
+           
+        print("repayment_fillter======", repayment_fillter)
+        serializer = RepaymentscheduleSerializer(repayment_fillter , many=True)
+
+        return success(serializer.data)
+    except RepaymentSchedule.DoesNotExist:
+        return error(f'In that {date} Record not found')
+    except Exception as e:
+        return error(str(e))
+
+
+
+             
 
 
 
