@@ -12,7 +12,7 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 
 from pathlib import Path
 import os
-from celery import Celery
+# from celery import Celery
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'LMS_BACKEND.settings')
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
