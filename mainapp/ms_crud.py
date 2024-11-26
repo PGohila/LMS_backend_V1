@@ -21,6 +21,7 @@ def create_company(name,address,email,phone,registration_number,is_active=False,
         request = get_current_request()
         if not request.user.is_authenticated:
             return error('Login required')
+        
         instance = Company.objects.create(
             name=name,
             description=description,
@@ -32,6 +33,14 @@ def create_company(name,address,email,phone,registration_number,is_active=False,
             is_active=is_active,
         )
         create_entity(entity_name=name,entity_type="loan")
+
+        # =============== create central funding account for company ===============
+        CentralFundingAccount.objects.create(
+            company_id = instance.id,
+            account_name = instance.name,
+            account_no = f"000{instance.id}",
+            account_type = 'investment',
+        )
 
         try:
             log_audit_trail(request.user.id,'Company Registration', instance, 'Create', 'Object Created.')
@@ -51,7 +60,6 @@ def update_company(company_id,address,email,phone,registration_number,name=None,
         request = get_current_request()
         if not request.user.is_authenticated:
             return error('Login required')
-        
         instance = Company.objects.get(pk=company_id)
         instance.address = address
         instance.email = email
@@ -155,9 +163,19 @@ def create_customer(company_id, firstname, lastname, email, phone_number, addres
             is_active = is_active,
         )
         customer_id=instance.id
-        print("customer_id34567890",customer_id)
+      
         create_folder_for_all_customer(customer_id,company_id)
-
+        #==================== createborrower Account ==================
+        CustomerAccount.objects.create(
+            company_id = company_id,
+            customer_id = customer_id,
+            account_number = f"B00{customer_id}",
+            bank_name = 'BB',
+            branch_name = None,
+            ifsc_code = None,  # For Indian banks, or SWIFT code for international banks
+            account_balance = 0.0,
+            account_status = 'active'
+        )
         try:
             log_audit_trail(request.user.id,'Customer Registration', instance, 'Create', 'Object Created.')
         except Exception as e:
@@ -797,123 +815,71 @@ def loan_approval(company_id,loanapp_id, approval_status = None,rejected_reason 
             instance.workflow_stats = "Approved"
             instance.save()
 
-            # create loan
+            # ============ create loan ================
             loan = create_loan(loanapp_id)
             
             loan_id = loan['data']
-            END_POINT = "loan-account-create/"
-            data = {
-                    "loan_id": loan_id,
-                    "loan_no": loan_id,
-                    "description": "Create Loan Account"
-                }
-            response = post_method(data,BASE_URL,END_POINT)
-
-            
-            END_POINT = f"loan-account-get/{loan_id}"
-            
-            response = get_method(BASE_URL,END_POINT)
-
-            account_data  = response
-            print('account_data--',account_data)
-
-            account_categories = {
-                "LoanAccount": "Loan", 
-                "LoanDisbursementAccount": "Loan Disbursement",  
-                "LoanRepaymentAccount": "Cash/Bank",  
-                "PenaltyAccount": "Penalty Fees/Income",  
-                "InterestAccount": "Interest Income",  
-            }
-
-            def get_account_number(account_category):
-                loan_id = loan['data']  # assuming loan['data'] holds the loan id
-                print(f"Looking for account number with loan_id={loan_id} and category={account_category}")
-                
-                for account in account_data:
-                    # Ensure consistent type and remove any spaces for the comparison
-                    account_loan = str(account['loan']).strip()
-                    account_category_value = account['account_category'].strip()
-
-                    loan_id_str = str(loan_id).strip()
-                    
-                    print(f"Checking account: loan={account_loan}, category={account_category_value}, account_number={account['account_number']}")
-                    
-                    # Debugging print statements to check the actual values being compared
-                    if account_loan == loan_id_str and account_category_value == account_category:
-                        print(f"Found matching account number: {account['account_number']}")
-                        return account['account_number']
-                
-                # If no matching account is found
-                print(f"No matching account found for loan_id={loan_id} and category={account_category}")
-                return None
 
             # 1. Create Loan Account
-            loan_account_number = get_account_number(account_categories["LoanAccount"])
-            print('loan_account_number:', loan_account_number)
-            if loan_account_number is None:
-                print("Error: Loan account number not found")
-            else:
-                loan_account = LoanAccount.objects.create(
-                    account_no=loan_account_number,
+     
+            loan_account = LoanAccount.objects.create(
+                account_no=f'LA00{loan_id}',
+                company_id=company_id,
+                loan_id=loan['data'],
+                principal_amount=0.0,
+                outstanding_balance=instance.loan_amount,
+            )
+
+            # 2. Create Loan Disbursement Account
+
+            loan_disbursement_account = LoanDisbursementAccount.objects.create(
+                account_no=f'DA00{loan_id}',
+                company_id=company_id,
+                loan_id=loan['data'],
+                amount=0.0,
+                loan_account=loan_account,
+            )
+
+            # 3. Create Repayment Account
+    
+            loan_repayment_account = LoanRepaymentAccount.objects.create(
+                    account_no=f'RA00{loan_id}',
                     company_id=company_id,
                     loan_id=loan['data'],
-                    principal_amount=instance.loan_amount,
-                    outstanding_balance=instance.loan_amount,
+                    amount=0.0,  # Initial amount can be set to 0.00
+                    payment_method='bank_transfer',  # Default method, adjust as needed
                 )
 
-                # 2. Create Loan Disbursement Account
-                loan_disbursement_account_number = get_account_number(account_categories["LoanDisbursementAccount"])
-                if loan_disbursement_account_number is None:
-                    print("Error: Loan Disbursement account number not found")
-                else:
-                    loan_disbursement_account = LoanDisbursementAccount.objects.create(
-                        account_no=loan_disbursement_account_number,
-                        company_id=company_id,
-                        loan_id=loan['data'],
-                        amount=instance.loan_amount,
-                        loan_account=loan_account,
-                    )
+            # 4. Create Penalty Account (optional)
 
-                # 3. Create Repayment Account
-                loan_repayment_account_number = get_account_number(account_categories["LoanRepaymentAccount"])
-                if loan_repayment_account_number is None:
-                    print("Error: Repayment account number not found")
-                else:
-                    LoanRepaymentAccount.objects.create(
-                        account_no=loan_repayment_account_number,
-                        company_id=company_id,
-                        loan_id=loan['data'],
-                        amount=0.00,  # Initial amount can be set to 0.00
-                        payment_method='bank_transfer',  # Default method, adjust as needed
-                    )
+            loan_penalty_account = PenaltyAccount.objects.create(
+                account_no = f'PA00{loan_id}',
+                company_id=company_id,
+                loan_id=loan['data'],
+                penalty_amount=0.0,  # Initial penalty amount can be set to 0.00
+                penalty_reason='N/A',  # Placeholder, adjust as necessary
+            )
 
-                # 4. Create Penalty Account (optional)
-                penalty_account_number = get_account_number(account_categories["PenaltyAccount"])
-                if penalty_account_number is None:
-                    print("Error: Penalty account number not found")
-                else:
-                    PenaltyAccount.objects.create(
-                        account_no=penalty_account_number,
-                        company_id=company_id,
-                        loan_id=loan['data'],
-                        penalty_amount=0.00,  # Initial penalty amount can be set to 0.00
-                        penalty_reason='N/A',  # Placeholder, adjust as necessary
-                    )
+            # 5. Create Interest Account (optional)
 
-                # 5. Create Interest Account (optional)
-                interest_account_number = get_account_number(account_categories["InterestAccount"])
-                if interest_account_number is None:
-                    print("Error: Interest account number not found")
-                else:
-                    InterestAccount.objects.create(
-                        account_no=interest_account_number,
-                        company_id=company_id,
-                        loan_id=loan['data'],
-                        interest_accrued=0.00,  # Initial interest accrued can be set to 0.00
-                    )
+            loan_interest_account = InterestAccount.objects.create(
+                    account_no = f'IA00{loan_id}',
+                    company_id=company_id,
+                    loan_id=loan['data'],
+                    interest_accrued=0.0,  # Initial interest accrued can be set to 0.00
+                )
 
 
-            # calling repayment schedule 
+            #====================================== approved amount transfer to loanaccount from centralfunding account ===============
+            get_loan = Loan.objects.get(id = loan_id)
+            get_centralaccount = CentralFundingAccount.objects.get(company_id = company_id)
+            get_centralaccount.account_balance -= get_loan.approved_amount    # the loan amount depit from centralfundingaccount
+            get_loanaccount = LoanAccount.objects.get(loan_id = loan_id)
+            get_loanaccount.principal_amount += get_loan.approved_amount      # the loan amount credit from centralfundingaccount
+            get_centralaccount.save()
+            get_loanaccount.save()
+
+            # =============== calling repayment schedule  =====================
             schedules = calculate_repayment_schedule(instance.loan_amount,instance.interest_rate, instance.tenure, instance.tenure_type, instance.repayment_schedule, instance.loan_calculation_method, instance.repayment_start_date, instance.repayment_mode)
             if schedules['status_code'] == 1: 
                 return error(f"An error occurred: {schedules['data']}")
@@ -1171,6 +1137,9 @@ def loanagreement_confirmation(company_id,loanagreementid,status):
         if status == "Completed":
             instance.agreement_status = "Completed"
             loan.status = 'approved'
+
+            #====== getting 
+
         else:
             instance.agreement_status = "Terminated"
             loan.status = 'denied'
