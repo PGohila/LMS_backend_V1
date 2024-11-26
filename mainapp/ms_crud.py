@@ -294,6 +294,30 @@ def create_customerdocuments(company_id,customer_id, document_type_id, attachmen
             description = description,
  
         )
+        try:
+            log_audit_trail(request.user.id,'Customer Document Upload', instance, 'Create', 'Object Created.')
+        except Exception as e:
+            return error(f"An error occurred: {e}")
+        folder_instance = FolderMaster.objects.filter(customer_id=customer_id, company_id=company_id,folder_name='Common Customer Folder').last()
+        start_date=None
+        end_date=None
+        document_title = attachment.name
+        record = DocumentUpload.objects.create(
+            document_id = unique_id_generate_doc('DID'),
+            company_id=company_id,
+            document_title=document_title,
+            document_type_id=document_type_id,
+            description=description,
+            document_upload=attachment,
+            folder=folder_instance,
+            start_date=start_date,
+            end_date=end_date,
+            created_by=request.user,
+            update_by=request.user,
+            document_size=attachment.size,
+        )  
+        print("record34567890p",record)      
+        document_upload_history(record.document_id)
 
         try:
             log_audit_trail(request.user.id,'Customer Document Registration', instance, 'Create', 'Object Created.')
@@ -1048,6 +1072,16 @@ def view_loan(loan_id=None,loanapp_id = None,company=None):
         # Return an error response with the exception message
         return error(f"An error occurred: {e}")
 
+def getting_loan_tranches(company_id):
+    try:
+        records = Loan.objects.filter(company_id = company_id,loanapp_id__disbursement_type = 'trenches')
+        serializer = LoanSerializer(records, many=True)
+        return success(serializer.data)
+    except Exception as e:
+        # Return an error response with the exception message
+        return error(f"An error occurred: {e}")
+
+
 def getting_approved_loanapp_records(company_id):
     try:
         records = Loan.objects.filter(company_id = company_id,workflow_stats__iexact = "Approved").order_by('-id')
@@ -1583,6 +1617,35 @@ def upload_collateraldocument(company_id,loanapplication_id,document_name,attach
             additional_documents = attachment,
             description = desctioption,
         )
+
+        print("instance34567890",instance)
+        try:
+            log_audit_trail(request.user.id,'Collaterals Document Upload', instance, 'Create', 'Object Created.')
+        except Exception as e:
+            return error(f"An error occurred: {e}")
+
+        folder_instance = FolderMaster.objects.filter(company_id=company_id,folder_name='Collateral Folder List').last()
+        print("folder_instance34567890-54675678", folder_instance)
+        start_date=None
+        end_date=None
+        document_type_id=None
+        record = DocumentUpload.objects.create(
+            document_id = unique_id_generate_doc('DID'),
+            company_id=company_id,
+            document_title=document_name,
+            document_type_id=document_type_id,
+            description=desctioption,
+            document_upload=attachment,
+            folder=folder_instance,
+            start_date=start_date,
+            end_date=end_date,
+            created_by=request.user,
+            update_by=request.user,
+            document_size=attachment.size,
+        )  
+        print("collateralrecord34567890p",record)      
+        document_upload_history(record.document_id)
+
 
         return success(f'Successfully created {instance}')
     except Company.DoesNotExist:
@@ -3454,6 +3517,251 @@ def delete_repayment_schedule(repayment_schedule_id):
         return error(f"An error occurred: {e}")
 
 
+# ============= Value Chain==================================
+
+def create_valuechainsetup(company_id,loan_type_id,valuechain_name,max_amount,min_amount,status=True,description = None):
+    try:
+        request = get_current_request()
+        if not request.user.is_authenticated:
+            return error('Login required')  
+        
+        # Generate a unique offer ID
+        chainid = ValueChainSetUps.objects.last()
+        last_id = '000'
+        if chainid:
+            last_id = chainid.unique_id[6:]
+        uniqueid = unique_id('VC', last_id)
+        print("63e753")
+        ValueChainSetUps.objects.create(
+            company_id = company_id,
+            unique_id = uniqueid,
+            loan_type_id = loan_type_id,
+            valuechain_name = valuechain_name,
+            max_amount  = max_amount,
+            min_amount = min_amount,
+            description = description,
+            status = status,
+        )
+        return success('success')
+    except Exception as e:
+        return error(f"An error occurred: {e}")
+
+def getting_valuechainsetups(company_id = None, loantype_id = None,valuechain_id = None):
+    try:
+        if valuechain_id is not None:
+            value_chains = ValueChainSetUps.objects.get(id = valuechain_id)
+            serializers = ValueChainSetUpsSerializer(value_chains).data
+        else:
+            value_chains = ValueChainSetUps.objects.filter(company_id =company_id, loan_type_id=loantype_id)
+            serializers = ValueChainSetUpsSerializer(value_chains,many = True).data
+
+        return success(serializers)
+    except Exception as e:
+        return error(f"An error occurred: {e}")
+
+def valuechain_setup_edit(valuechain_id,valuechain_name,max_amount,min_amount,description,status):
+    try:
+        value_chains = ValueChainSetUps.objects.get(id = valuechain_id)
+        value_chains.valuechain_name = valuechain_name
+        value_chains.max_amount = float(max_amount)
+        value_chains.min_amount = float(min_amount)
+        value_chains.description = description
+        value_chains.status = status
+        value_chains.save()
+        return success('Sucessfully updated')
+    except ValueChainSetUps.DoesNotExist:
+        return error('Invalid ValueChainSetUps ID: ValueChainSetUps not found.')
+    except Exception as e:
+        return error(f"An error occurred: {e}")
+    
+def valuechain_setup_delete(valuechain_id):
+    try:
+        value_chains = ValueChainSetUps.objects.get(id = valuechain_id)
+        value_chains.delete()
+        return success('Sucessfully Deleted')
+    except Exception as e:
+        return error(f"An error occurred: {e}")
+
+
+def create_milestonesetup(company_id,loan_type,valuechain_id,milestone_name,max_amount,min_amount,description = None):
+    try:
+        request = get_current_request()
+        if not request.user.is_authenticated:
+            return error('Login required')
+        
+        # Generate a unique offer ID
+        chainid = MilestoneSetUp.objects.last()
+        
+        last_id = '000'
+        if chainid:
+            last_id = chainid.unique_id[9:]
+        
+        uniqueid = unique_id('MS', last_id)
+        MilestoneSetUp.objects.create(
+            company_id = company_id,
+            unique_id = uniqueid,
+            loan_type_id = loan_type,
+            valuechain_id_id = valuechain_id,
+            milestone_name = milestone_name,
+            max_amount = max_amount,
+            min_amount = min_amount,
+            description = description,
+        )
+
+        return success('success')
+    except Exception as e:
+        return error(f"An error occurred: {e}")
+
+def getting_milestonesetup(company_id,valuechain_id = None,miletone_id = None):
+    try:
+        if miletone_id is not None:
+            records = MilestoneSetUp.objects.get(id = miletone_id)
+            serializers = MilestoneSetUpSerializer(records).data
+        else:
+            records = MilestoneSetUp.objects.filter(company_id = company_id,valuechain_id_id = valuechain_id)
+            serializers = MilestoneSetUpSerializer(records,many=True).data
+        return success(serializers)
+    except Exception as e:
+        return error(f"An error occurred: {e}")
+
+def milestone_setup_edit(milestone_id,milestone_name,max_amount,min_amount,description,status):
+    try:
+        milestones = MilestoneSetUp.objects.get(id = milestone_id)
+        milestones.milestone_name = milestone_name
+        milestones.max_amount = float(max_amount)
+        milestones.min_amount = float(min_amount)
+        milestones.description = description
+        milestones.status = status
+        milestones.save()
+        return success('Sucessfully updated')
+    except ValueChainSetUps.DoesNotExist:
+        return error('Invalid ValueChainSetUps ID: ValueChainSetUps not found.')
+    except Exception as e:
+        return error(f"An error occurred: {e}")
+    
+def milestone_setup_delete(milestone_id):
+    try:
+        milestones = MilestoneSetUp.objects.get(id = milestone_id)
+        milestones.delete()
+        return success('Sucessfully Deleted')
+    except Exception as e:
+        return error(f"An error occurred: {e}")
+
+def create_stagesetup(company_id,milestone_id,stage_name,min_amount,max_amount,sequence,description = None):
+    try:
+        request = get_current_request()
+        if not request.user.is_authenticated:
+            return error('Login required')
+        
+        MilestoneStagesSetup.objects.create(
+            company_id = company_id,
+            milestone_id_id = milestone_id,
+            stage_name = stage_name,
+            sequence = sequence,
+            max_amount = max_amount,
+            min_amount = min_amount,
+            description = description,
+        )
+        return success('success')
+    except Exception as e:
+        return error(f"An error occurred: {e}")
+
+def getting_milestonestagessetup(company_id,miletone_id = None,stages_id = None):
+    try:
+        if stages_id is not None:
+            records = MilestoneStagesSetup.objects.get(id = stages_id)
+            serializers = MilestoneStagesSetupSerializer(records).data
+        else:
+            records = MilestoneStagesSetup.objects.filter(company_id = company_id,milestone_id_id = miletone_id)
+            serializers = MilestoneStagesSetupSerializer(records,many=True).data
+        return success(serializers)
+    except Exception as e:
+        return error(f"An error occurred: {e}")
+
+def stages_setup_edit(stages_id,stage_name,max_amount,min_amount,description,sequence):
+    try:
+        stages = MilestoneStagesSetup.objects.get(id = stages_id)
+        stages.stage_name = stage_name
+        stages.max_amount = float(max_amount)
+        stages.min_amount = float(min_amount)
+        stages.description = description
+        stages.sequence = sequence
+        stages.save()
+        return success('Sucessfully updated')
+    except ValueChainSetUps.DoesNotExist:
+        return error('Invalid ValueChainSetUps ID: ValueChainSetUps not found.')
+    except Exception as e:
+        return error(f"An error occurred: {e}")
+    
+def stages_setup_delete(stages_id):
+    try:
+        milestones = MilestoneStagesSetup.objects.get(id = stages_id)
+        milestones.delete()
+        return success('Sucessfully Deleted')
+    except Exception as e:
+        return error(f"An error occurred: {e}") 
+
+def create_loanvaluechain(company_id):
+    try:
+        records = Loan.objects.filter(company_id = company_id,loanapp_id__disbursement_type = 'trenches')
+        for data in records:
+            valuechain = ValueChainSetUps.objects.filter(loan_type_id = data.loanapp_id.loantype.id)
+            for data1 in valuechain: # looping valuechain
+                # Generate a unique offer ID
+                chainid = LoanValuechain.objects.last()
+                last_id = '000'
+                if chainid:
+                    last_id = chainid.unique_id[10:]
+                uniqueid = unique_id('LVC', last_id)
+
+                loanchain = LoanValuechain.objects.create(
+                    company_id = company_id,
+                    loan_id = data.id,
+                    unique_id = uniqueid,
+                    loan_type_id = data1.loan_type.id,
+                    valuechain_name = data1.valuechain_name,
+                    amount  = 0.0,
+                    description = data1.description,
+                    active = True,
+                    sequence = 1,  # Order of milestones
+                )
+
+                milestone = MilestoneSetUp.objects.filter(valuechain_id_id = data1.id) # milestone 
+                for data2 in milestone: # looping milestone
+                    # Generate a unique offer ID
+                    milestoneid = LoanMilestone.objects.last()
+                    last_id = '000'
+                    if milestoneid:
+                        last_id = milestoneid.unique_id[10:]
+                    uniqueid = unique_id('LMS', last_id)
+
+                    milestone = LoanMilestone.objects.create(
+                        company_id = company_id,
+                        loan_id = data.id,
+                        unique_id = uniqueid,
+                        loan_type_id = data1.loan_type.id,
+                        valuechain_id_id = loanchain.id,
+                        milestone_name = data2.milestone_name,
+                        max_amount  = 0.0,
+                        description = data2.description,
+                        active = True,
+                        sequence = 1,
+                    )
+
+                    milestonestages = MilestoneStagesSetup.objects.filter(milestone_id_id = data2.id) # milestone
+                    for data3 in milestonestages:
+                        LoanMilestoneStages.objects.create(
+                            company_id = company_id,
+                            loan_id = data.id,
+                            milestone_id_id = milestone.id,
+                            stage_name = data3.stage_name,
+                            description = data3.description,  # Optional description of the stage
+                            sequence = 1,
+                        )
+
+        return success("success")
+    except Exception as e:
+        return error(f"An error occurred: {e}") 
 
 
 # def update_loan(loan_id,company_id=None, loanid=None, customer_id=None, loan_amount=None, loan_date=None, loan_term=None, interest_rate=None, status=None):
@@ -3921,25 +4229,25 @@ def document_category_view(document_category_id=None):
 
 
 
-def department_view(department_id=None):
-    try:
-        if department_id:
-            records = Department.objects.filter(id=department_id)
-            if records.exists():
-                record=records.last()
-                serializer = DepartmentSerializer(record)
-                return success(serializer.data)
-            else:
-                return error('department_id is invalid')
-        else:
-            records = Department.objects.all()
-            serializer = DepartmentSerializer(records,many=True)
-            return success(serializer.data)
-    except Exception as e:
-        return error(e)
+# def department_view(department_id=None):
+#     try:
+#         if department_id:
+#             records = Department.objects.filter(id=department_id)
+#             if records.exists():
+#                 record=records.last()
+#                 serializer = DepartmentSerializer(record)
+#                 return success(serializer.data)
+#             else:
+#                 return error('department_id is invalid')
+#         else:
+#             records = Department.objects.all()
+#             serializer = DepartmentSerializer(records,many=True)
+#             return success(serializer.data)
+#     except Exception as e:
+#         return error(e)
 
 
-def document_category_create(category_name,department_id,description=None):
+def document_category_create(category_name,description=None):
     try:
         request = get_current_request()
         if not request.user.is_authenticated:
@@ -3948,7 +4256,6 @@ def document_category_create(category_name,department_id,description=None):
         
         record = DocumentCategory.objects.create(
                 category_name=category_name,
-                department_id=department_id,
                 description=description,
                 created_by=request.user,
                 update_by=request.user,
@@ -3963,27 +4270,6 @@ def document_category_create(category_name,department_id,description=None):
     except Exception as e:
         return error(e)
 
-def department_create(department_name,description=None):
-    try:
-        request = get_current_request()
-        if not request.user.is_authenticated:
-            return error('Login requried')
-        
-        record = Department.objects.create(
-                department_name=department_name,
-                description=description,
-                created_by=request.user,
-                update_by=request.user,
-            )
-        try:
-            log_audit_trail(request.user.id,'Department Registration', record, 'Create', 'Object Created.')
-        except Exception as e:
-            return error(f"An error occurred: {e}")
-
-
-        return success('Document type create successfully')
-    except Exception as e:
-        return error(e)
 
 def entity_master_create(entity_id,entity_name,entity_type,description=None,db_id=None):
     try:
@@ -4034,30 +4320,30 @@ def document_type_create(document_type_name,short_name,description=None):
         return error(e)
     
 
-def document_upload(document_title,document_category,document_type,entity_type,description,document_upload,folder_id,start_date=None,end_date=None):
+def document_upload(document_title,document_type,entity_type,description,document_upload,folder_id,start_date=None,end_date=None,company_id=None):
     try:
         print('entity_type==+++',entity_type,folder_id)
         request = get_current_request()
         if not request.user.is_authenticated:
             return error('Login requried')
-        
-        
+
         # obj_count=DocumentUpload.objects.all().last()
 
         # print("folder_instance---+++",folder_instance)
     
         folder_instance = FolderMaster.objects.get(folder_id=folder_id)
+        document_type= IdentificationType.objects.get(id=document_type)
+        print("document_type345678o",document_type)
         print("folder_instance---+++",folder_instance)
         print("document_upload56789",document_upload)
         record = DocumentUpload.objects.create(
                 document_id = unique_id_generate_doc('DID'),
+                company_id=company_id,
                 document_title=document_title,
-                document_category_id=document_category,
-                document_type_id=document_type,
+                document_type=document_type,
                 description=description,
                 document_upload=document_upload,
                 folder=folder_instance,
-                # upload_date=datetime.now(),
                 start_date=start_date,
                 end_date=end_date,
                 created_by=request.user,
@@ -4169,3 +4455,92 @@ def document_delete(document_id):
         return error('document_id is invalid')
     except Exception as e:
         return error(str(e))
+
+
+def folder_delete(entity_id=None,folder_id=None):
+    print("entity_id45678o",entity_id,folder_id)
+    try:
+        if entity_id:
+            entity_instance = CustomDocumentEntity.objects.get(entity_id=entity_id)
+            #records = FolderMaster.objects.filter(entity=entity_instance,default_folder=True,matter__isnull=True)
+            print('recordsdelete=====',entity_instance)
+            entity_instance.delete()
+            return success('Entity Deleted Sucessfully')
+        if folder_id:
+            folder_instance=FolderMaster.objects.get(folder_id=folder_id)
+            folder_instance.delete()
+            return success('Folder Deleted Sucessfully')
+        
+    except CustomDocumentEntity.DoesNotExist:
+        return error('Entity_id is invalid')
+    except Exception as e:
+        return error(e)  
+
+def document_edit(document_id,document_name,document_upload):
+    try:
+        print("document_upload---",document_upload,document_id,document_name)
+        request = get_current_request()
+        if not request.user.is_authenticated:
+            return error('Login requried')        
+        
+        obj = DocumentUpload.objects.get(document_id=document_id)
+        obj.document_title = document_name
+        obj.document_upload = document_upload
+        obj.save()
+        print("document_upload_history+++",obj.document_id) 
+        document = document_upload_history(obj.document_id)
+        document_audit = document_upload_audit('updated',obj.document_id)
+        print("document_upload_history///",document) 
+        print("document_audit/",document_audit) 
+        return success("Updated successfully")
+    except DocumentUpload.DoesNotExist:
+        return error('document_id is invalid')
+    except Exception as e:
+        return error(str(e))
+
+
+
+
+
+def user_check():
+    try:
+        request = get_current_request()
+        user_check=request.user.is_superuser
+        print("user_check",user_check)
+        return success(user_check)
+    except Exception as e:
+        return error(f"An error occurred: {e}")
+    
+# def view_audit():
+#     try:
+#         audit_trail = AuditTrail.objects.all().order_by('-datetime')
+#         serializer = AuditTrailSerializer(audit_trail, many=True)
+
+#         return success(serializer.data)
+
+#     except AuditTrail.DoesNotExist:
+#         return error(f"Audit with ID {AuditTrail} not found")
+#     except Exception as e:
+#         return error(f"An error occurred: {e}")
+
+
+
+def view_audit():
+    try:
+        audit_trail = AuditTrail.objects.all().order_by('-datetime')
+        serializer = AuditTrailSerializer(audit_trail, many=True)
+        serialized_data = serializer.data
+
+        # Format the datetime field for each record
+        for record in serialized_data:
+            if 'datetime' in record:
+                original_datetime_str = record['datetime']
+                parsed_datetime = datetime.strptime(original_datetime_str, '%Y-%m-%dT%H:%M:%S.%fZ')
+                record['datetime'] = parsed_datetime.strftime('%Y-%m-%d / %H:%M:%S')
+
+        return success(serialized_data)
+
+    except AuditTrail.DoesNotExist:
+        return error(f"Audit with ID {AuditTrail} not found")
+    except Exception as e:
+        return error(f"An error occurred: {e}")
