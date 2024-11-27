@@ -692,6 +692,13 @@ class RepaymentSchedule(models.Model):
         
     ],default="Pending")
     payment_method = models.ForeignKey(PaymentMethod,on_delete=models.CASCADE,related_name='%(class)s_payment_method',blank=True,null=True)
+    total_penalty_amt = models.FloatField(default = 0.0)
+    payable_penalty_amt = models.FloatField(default = 0.0)
+    penalty_status = models.CharField(max_length = 50,choices = [
+        ('Paid', 'Paid'),
+        ('Pending', 'Pending'),
+        
+    ],default="Pending")
     transaction_id = models.CharField(max_length=50,blank=True,null=True)
     notes = models.TextField(blank=True,null=True)
     confirmed_status = models.CharField(max_length=50,choices = [
@@ -755,24 +762,7 @@ class Payments(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-class Penalties(models.Model):
-    company = models.ForeignKey(Company,on_delete=models.CASCADE,related_name='%(class)s_company')
-    penalty_id = models.CharField(max_length=50,unique=True)
-    loan_application = models.ForeignKey(LoanApplication,on_delete=models.CASCADE,related_name='%(class)s_loan_application')
-    repaymentschedule_id = models.ForeignKey(RepaymentSchedule,on_delete=models.CASCADE,related_name='%(class)s_repaymentschedule_id')
-    panalty_date = models.DateField(auto_now=True)
-    penalty_amount = models.FloatField(default=0.0)
-    penalty_reason = models.CharField(max_length=50,choices = [
-        ('Late Payment', 'Late Payment'),
-        ('Missed Payment', 'Missed Payment'),
-    ])
-    payment_status = models.CharField(max_length=50,choices = [
-        ('Paid', 'Paid'),
-        ('Unpaid', 'Unpaid'),
-    ])
-    transaction_refference = models.TextField(blank=True,null=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+
 
 class LoanClosure(models.Model):
     company = models.ForeignKey(Company,on_delete=models.CASCADE)

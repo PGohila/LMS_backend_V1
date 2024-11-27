@@ -187,6 +187,8 @@ class MilestoneStagesSetupSerializer(serializers.ModelSerializer):
         model = MilestoneStagesSetup
         fields = "__all__"
 
+
+
 class LoanOfferSerializer(serializers.ModelSerializer):
     class Meta:
         model = LoanOffer
@@ -194,15 +196,18 @@ class LoanOfferSerializer(serializers.ModelSerializer):
 
 class RepaymentscheduleSerializer(serializers.ModelSerializer):
     loan_application = LoanapplicationSerializer()
+    loan_id = LoanSerializer()
     company = CompanySerializer()
     class Meta:
         model = RepaymentSchedule
         fields = "__all__"
 
-
-class PenaltiesSerializer(serializers.ModelSerializer):
+class PenaltySerializer(serializers.ModelSerializer):
+    company = CompanySerializer()
+    loan = LoanSerializer()
+    repayment_schedule = RepaymentscheduleSerializer()
     class Meta:
-        model = Penalties
+        model = Penalty
         fields = "__all__"
 
 class CustomDocumentEntitySerializer(serializers.ModelSerializer):
