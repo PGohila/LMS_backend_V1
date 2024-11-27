@@ -1595,10 +1595,14 @@ def confirmed_schedule(loan_id):
         return error(f"An error occurred: {e}")
 
 
-def getting_schedule(schedule_id):
+def getting_schedule(schedule_id = None,uniques_id = None):
     try:
-        instance=RepaymentSchedule.objects.get(schedule_id= schedule_id)
-        serializer=RepaymentscheduleSerializer(instance)
+        if uniques_id is not None:
+            instance=RepaymentSchedule.objects.get(id= uniques_id)
+            serializer=RepaymentscheduleSerializer(instance)
+        else:
+            instance=RepaymentSchedule.objects.get(schedule_id= schedule_id)
+            serializer=RepaymentscheduleSerializer(instance)
         return success(serializer.data) 
     except Exception as e:
         return error(f"An error occurred: {e}")
@@ -2002,138 +2006,6 @@ def delete_payment(payment_id):
 
     except Payments.DoesNotExist:
         return error(f"Payment with ID {payment_id} not found")
-    except Exception as e:
-        return error(f"An error occurred: {e}")
-
-def create_penalties(company_id, loanapp_id, repaymentschedule_id, penalty_amount, penalty_reason, payment_status, transaction_reference=None):
-    try:
-        request = get_current_request()
-        if not request.user.is_authenticated:
-            return error('Login required')
-
-
-        company = Company.objects.get(pk=company_id)
-        loan_application = LoanApplication.objects.get(pk=loanapp_id)
-        repayment_schedule = RepaymentSchedule.objects.get(pk=repaymentschedule_id)
-
-        # Generate a unique penalty ID
-        last_penalty = Penalties.objects.last()
-        last_id = '00'
-        if last_penalty:
-            last_id = last_penalty.penalty_id[9:]
-        penalty_id = unique_id('PEN', last_id)
-
-        # Create the penalty
-        penalty = Penalties.objects.create(
-            company=company,
-            penalty_id=penalty_id,
-            loan_application=loan_application,
-            repaymentschedule_id=repayment_schedule,
-            penalty_amount=penalty_amount,
-            penalty_reason=penalty_reason,
-            payment_status=payment_status,
-            transaction_refference=transaction_reference
-        )
-
-        try:
-            log_audit_trail(request.user.id,'penalty Registration', penalty, 'Create', 'Object Created.')
-        except Exception as e:
-            return error(f"An error occurred: {e}")
-
-        return success(f"Penalty created successfully with ID: {penalty.penalty_id}")
-
-    except Company.DoesNotExist:
-        return error("Invalid Company ID")
-    except LoanApplication.DoesNotExist:
-        return error("Invalid Loan Application ID")
-    except RepaymentSchedule.DoesNotExist:
-        return error("Invalid Repayment Schedule ID")
-    except ValidationError as e:
-        return error(f"Validation Error: {e}")
-    except Exception as e:
-        return error(f"An error occurred: {e}")
-
-def view_penalties(penalty_id=None, company_id=None):
-    try:
-        if penalty_id:
-            penalty = Penalties.objects.get(pk=penalty_id)
-            serializer = PenaltiesSerializer(penalty)
-        elif company_id:
-            penalties = Penalties.objects.filter(company_id=company_id)
-            serializer = PenaltiesSerializer(penalties, many=True)
-        else:
-            penalties = Penalties.objects.all()
-            serializer = PenaltiesSerializer(penalties, many=True)
-
-        return success(serializer.data)
-
-    except Penalties.DoesNotExist:
-        return error(f"Penalty with ID {penalty_id} not found")
-    except Exception as e:
-        return error(f"An error occurred: {e}")
-
-def update_penalties(penalty_id, company_id=None, loanapp_id=None, repaymentschedule_id=None, penalty_amount=None, penalty_reason=None, payment_status=None, transaction_reference=None):
-    try:
-        request = get_current_request()
-        if not request.user.is_authenticated:
-            return error('Login required')
-        
-        penalty = Penalties.objects.get(pk=penalty_id)
-
-        if company_id:
-            penalty.company = Company.objects.get(pk=company_id)
-        if loanapp_id:
-            penalty.loan_application = LoanApplication.objects.get(pk=loanapp_id)
-        if repaymentschedule_id:
-            penalty.repaymentschedule_id = RepaymentSchedule.objects.get(pk=repaymentschedule_id)
-        if penalty_amount:
-            penalty.penalty_amount = penalty_amount
-        if penalty_reason:
-            penalty.penalty_reason = penalty_reason
-        if payment_status:
-            penalty.payment_status = payment_status
-        if transaction_reference:
-            penalty.transaction_refference = transaction_reference
-
-        penalty.save()
-
-        try:
-            log_audit_trail(request.user.id,'penalty Registration', penalty, 'Update', 'Object Updated.')
-        except Exception as e:
-            return error(f"An error occurred: {e}")
-
-        
-        return success("Penalty updated successfully")
-
-    except Penalties.DoesNotExist:
-        return error(f"Penalty with ID {penalty_id} not found")
-    except Company.DoesNotExist:
-        return error("Invalid Company ID")
-    except LoanApplication.DoesNotExist:
-        return error("Invalid Loan Application ID")
-    except RepaymentSchedule.DoesNotExist:
-        return error("Invalid Repayment Schedule ID")
-    except Exception as e:
-        return error(f"An error occurred: {e}")
-
-def delete_penalties(penalty_id):
-    try:
-        request = get_current_request()
-        if not request.user.is_authenticated:
-            return error('Login required')
-        
-        penalty = Penalties.objects.get(pk=penalty_id)
-        penalty.delete()
-        try:
-            log_audit_trail(request.user.id,'penalty Registration', penalty, 'Delete', 'Object Deleted.')
-        except Exception as e:
-            return error(f"An error occurred: {e}")
-
-        
-        return success(f"Penalty with ID {penalty_id} deleted successfully")
-
-    except Penalties.DoesNotExist:
-        return error(f"Penalty with ID {penalty_id} not found")
     except Exception as e:
         return error(f"An error occurred: {e}")
 
@@ -4762,6 +4634,7 @@ def getting_penalty_loans(company_id):
             repayment_date__lt=now().date(),  # Repayment date is in the past
             repayment_status="Pending"        # Status is still pending
         )
+        print("===============",overdue_schedules)
         loans = [data.loan_id.id for data in overdue_schedules]
 
         records = Loan.objects.filter(id__in = loans)
@@ -4782,50 +4655,53 @@ def getting_overdue(company_id,loan_ID):
     except Exception as e:
         return error(f"An error occurred: {e}")
 
-def create_penalty(company, loan, penalty_amount, penalty_reason, repayment_schedule=None):
+def create_penalty(company, loan, penalty_amount, penalty_reason, repayment_schedule):
     try:
-        """
-        Create a penalty for a loan or a specific repayment schedule.
 
-        Args:
-            company (Company): The company instance.
-            loan (Loan): The loan instance.
-            penalty_amount (float): Amount of the penalty.
-            penalty_reason (str): Reason for the penalty.
-            repayment_schedule (RepaymentSchedule, optional): Related repayment schedule.
-        
-        Returns:
-            Penalty: The created penalty instance.
-        """
+        # Generate a unique offer ID
+        chainid = Penalty.objects.last()
+        last_id = '000'
+        if chainid:
+            last_id = chainid.penalty_id[6:]
+        uniqueid = unique_id('SP', last_id)
 
-        penalty_id = f"PNL-{loan.loan_id}-{int(date.today().strftime('%Y%m%d'))}"
         penalty = Penalty.objects.create(
-            company=company,
-            penalty_id=penalty_id,
-            loan=loan,
-            repayment_schedule=repayment_schedule,
+            company_id=company,
+            penalty_id=uniqueid,
+            loan_id=loan,
+            repayment_schedule_id=repayment_schedule,
             penalty_date=date.today(),
             penalty_amount=penalty_amount,
             penalty_reason=penalty_reason,
             status="unpaid",
         )
-        return success(penalty)
+        schedule = RepaymentSchedule.objects.get(id = repayment_schedule)
+        schedule.total_penalty_amt += penalty_amount
+        schedule.payable_penalty_amt += penalty_amount
+        schedule.save()
+
+        return success('Successfully saved')
     except Exception as e:
-            return error(f"An error occurred: {e}")
+        return error(f"An error occurred: {e}")
 
-def get_penalties_for_loan(loan):
-    """
-    Retrieve all penalties for a given loan.
+def get_penalties_for_loan(company_id):
+    try:
+        records = Penalty.objects.filter(company_id=company_id)
+        loan_id = [data.loan.id for data in records]
+        loan_data = Loan.objects.filter(id__in = loan_id)
+        serializer = LoanSerializer(loan_data,many = True)
+        return success(serializer.data)
+    except Exception as e:
+        return error(f"An error occurred: {e}")
 
-    Args:
-        loan (Loan): The loan instance.
-    
-    Returns:
-        QuerySet: A queryset of penalty instances.
-    """
-    records = Penalty.objects.filter(loan=loan)
+def getting_penalities_withloan(company_id,loan_id):
+    try:
+        records = Penalty.objects.filter(company_id=company_id,loan_id = loan_id )
+        serializer = PenaltySerializer(records,many = True)
+        return success(serializer.data)
+    except Exception as e:
+        return error(f"An error occurred: {e}")
 
-    return 
 
 def get_unpaid_penalties(loan):
     """
@@ -4841,25 +4717,6 @@ def get_unpaid_penalties(loan):
 
     return Penalty.objects.filter(loan=loan, status="unpaid")
 
-def pay_penalty(penalty, transaction_reference):
-    """
-    Process payment for a penalty.
-
-    Args:
-        penalty (Penalty): The penalty instance to be paid.
-        transaction_reference (str): Reference for the payment transaction.
-    
-    Returns:
-        Penalty: The updated penalty instance.
-    """
-    if penalty.status == "unpaid":
-        penalty.status = "paid"
-        penalty.payment_date = date.today()
-        penalty.transaction_reference = transaction_reference
-        penalty.save()
-        return penalty
-    else:
-        raise ValueError("Penalty is already paid or waived.")
 
 def calculate_late_penalty(loan, repayment_schedule, penalty_rate):
     """
@@ -4878,42 +4735,3 @@ def calculate_late_penalty(loan, repayment_schedule, penalty_rate):
         penalty_amount = repayment_schedule.instalment_amount * penalty_rate * overdue_days
         return round(penalty_amount, 2)
     return 0.0
-
-def waive_penalty(penalty):
-    """
-    Waive a penalty for a loan.
-
-    Args:
-        penalty (Penalty): The penalty instance to waive.
-    
-    Returns:
-        Penalty: The updated penalty instance.
-    """
-    if penalty.status == "unpaid":
-        penalty.status = "waived"
-        penalty.save()
-        return penalty
-    else:
-        raise ValueError("Penalty cannot be waived as it is already resolved.")
-
-def generate_penalty_report(loan=None, start_date=None, end_date=None):
-    """
-    Generate a penalty report.
-
-    Args:
-        loan (Loan, optional): The loan instance to filter penalties.
-        start_date (date, optional): Start date for the report range.
-        end_date (date, optional): End date for the report range.
-    
-    Returns:
-        QuerySet: A queryset of penalty instances matching the criteria.
-    """
-    from .models import Penalty
-    query = Penalty.objects.all()
-    if loan:
-        query = query.filter(loan=loan)
-    if start_date:
-        query = query.filter(penalty_date__gte=start_date)
-    if end_date:
-        query = query.filter(penalty_date__lte=end_date)
-    return query

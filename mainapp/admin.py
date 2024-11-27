@@ -102,9 +102,6 @@ class LoanofferAdmin(admin.ModelAdmin):
 class RepaymentscheduleAdmin(admin.ModelAdmin):
     list_display = ['company', 'loan_application', 'repayment_date', 'instalment_amount', 'principal_amount', 'interest_amount', 'remaining_balance', 'repayment_status', 'payment_method', 'transaction_id', 'notes']
     
-@admin.register(Penalties)
-class PenaltiesAdmin(admin.ModelAdmin):
-    list_display = ['company', 'penalty_id','loan_application', 'repaymentschedule_id', 'panalty_date', 'penalty_amount', 'penalty_reason', 'payment_status', 'transaction_refference']
 
 @admin.register(LoanAccount)
 class LoanAccountAdmin(admin.ModelAdmin):
@@ -134,6 +131,7 @@ class MilestoneAccountAdmin(admin.ModelAdmin):
 class LoanEntryAdmin(admin.ModelAdmin):
     list_display = ['company', 'loan','transaction_type', 'amount', 'transaction_date', 'transaction_reference']  
 
+admin.site.register (Penalty)
 admin.site.register (CustomerAccount)
 admin.site.register (ValueChainSetUps)
 admin.site.register (MilestoneSetUp)
