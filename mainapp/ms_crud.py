@@ -879,7 +879,13 @@ def loan_approval(company_id,loanapp_id, approval_status = None,rejected_reason 
                     loan_id=loan['data'],
                     interest_accrued=0.0,  # Initial interest accrued can be set to 0.00
                 )
-
+            
+            loan_milestone_account = MilestoneAccount.objects.create(
+                    # account_no = f'IA00{loan_id}',
+                    company_id=company_id,
+                    loan_id=loan['data'],
+                    milestone_cost=0.0,  # Initial milestone accrued can be set to 0.00
+                )
 
             #====================================== approved amount transfer to loanaccount from centralfunding account ===============
             get_loan = Loan.objects.get(id = loan_id)
@@ -1383,8 +1389,16 @@ def create_disbursement(company_id, customer_id,loan_id, loan_application_id, am
                 disbursementact.amount += amount # amount credit to disbursement account
                 loanact.save()
                 disbursementact.save() 
-
-                milestone_account = MilestoneAccount.objects.get(loan_id = loan.id)
+                milestone_obj = MilestoneAccount.objects.filter(loan_id = loan.id)
+                if not milestone_obj.exists():
+                    milestone_account = MilestoneAccount.objects.create(
+                        # account_no = f'IA00{loan_id}',
+                        company_id=company_id,
+                        loan_id=loan.id,
+                        milestone_cost=0.0,  # Initial milestone accrued can be set to 0.00
+                    )
+                else:
+                    milestone_account =milestone_obj.last()
                 milestone_account.milestone_cost += amount
                 milestone_account.status += 'Completed'
                 milestone_account.save()
