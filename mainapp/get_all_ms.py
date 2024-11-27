@@ -56,7 +56,7 @@ def so_registration(register):
 
         service_json_data = json.dumps(service_data)
         # service_api_url = 'http://127.0.0.1:8000/register-serviceplan/'
-        service_api_url = 'https://loanmanagementf1.pythonanywhere.com/'
+        service_api_url = 'https://loanmanagementf1.pythonanywhere.com/register-serviceplan/'
         headers = {
             'Content-Type': 'application/json',  # Specify the correct Content-Type
         }
