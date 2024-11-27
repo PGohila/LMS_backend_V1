@@ -3763,6 +3763,17 @@ def milestone_edit_v1(milestone_id,amount):
     except Exception as e:
         return error(f"An error occurred: {e}")
 
+def milestone_compelete(milestone_id):
+    try:
+        records = LoanMilestone.objects.filter(id=milestone_id)
+        if records.exists():
+            record = records.last()
+            record.actual_completion_date = datetime.now()
+            record.save()
+        return success('Updated successfully')
+    except Exception as e:
+        return error(f"An error occurred: {e}")
+
 def milestone_activity_delete_v1(activity_id):
     try:
         records = LoanMilestoneStages.objects.filter(id=activity_id)
@@ -4765,4 +4776,97 @@ def calculate_late_penalty(loan, repayment_schedule, penalty_rate):
         penalty_amount = repayment_schedule.instalment_amount * penalty_rate * overdue_days
         return round(penalty_amount, 2)
     return 0.0
+
+
+import calendar
+from django.db.models import Q
+from datetime import datetime
+
+def dashboard_records(company_id):
+    print('enter dashboard')
+    print('company_id',company_id)
+    today = datetime.now().date()
+    year = today.year
+    month = today.month
+
+    last_day = calendar.monthrange(year, month)[1]
+    last_date = datetime(year, month, last_day).date()
+
+    # Get the count of overdue repayments for today
+    report_today = RepaymentSchedule.objects.filter(repayment_date=today)
+    count_today_overdue = report_today.filter(company_id=company_id).count()
+    print('count_today_overdue:', count_today_overdue)
+
+    # Get the count of overdue repayments for the current month
+    start_date = today  
+    end_date = last_date  
+    report_month = RepaymentSchedule.objects.filter(repayment_date__range=(start_date, end_date))
+    count_of_overdue_this_month = report_month.filter(company_id=company_id).count()
+    print('count_of_overdue_this_month:', count_of_overdue_this_month)
+
+    report_past = RepaymentSchedule.objects.filter(
+            Q(repayment_date__lte=today) & Q(repayment_status="Pending")
+        )
+    count_past_overdue = report_past.filter(company_id=company_id).count()
+    print('count_past_overdue:', count_past_overdue)
+
+    #For get the data for Loan Application
+    loans_data = LoanApplication.objects.all()
+    loans = loans_data.filter(company_id=company_id)
+    loans_records = LoanapplicationSerializer(loans,many = True)
+
+    #For get the data for Loan Audit tracking
+    audit = AuditTrail.objects.all()
+    audit_data = audit.order_by('-datetime')[:10]
+    for record in audit_data:
+        if isinstance(record.datetime, str):
+            try:
+                record.datetime = datetime.strptime(record.datetime, '%Y-%m-%d %H:%M:%S')
+            except ValueError:
+                print(f"Invalid datetime format for record: {record.id}")
+        
+        # Format datetime to desired format
+        if isinstance(record.datetime, datetime):
+            record.formatted_datetime = record.datetime.strftime('%d-%m-%Y: %H%M')
+
+    audit_records = AuditTrailSerializer(audit_data,many = True)
+
+    #For get Loan datas
+    loans = view_loan_for_dashboard(company_id)
+    loan_records = loans['data']
+    
+     
+
+    records = {
+        'count_today_overdue': count_today_overdue,
+        'count_of_overdue_this_month': count_of_overdue_this_month,
+        'count_past_overdue': count_past_overdue,
+        'recent_application':loans_records.data,
+        'audit_records':audit_records.data,
+        'loan_records':loan_records
+    }
+    return success(records)
+
+def view_loan_for_dashboard(company_id):
+    try:
+        
+        request = get_current_request()
+        if not request.user.is_authenticated:
+            return error('Login required')
+        
+        if company_id is not None:
+            records = Loan.objects.filter(company_id = company_id)
+            serializer = LoanSerializer(records, many=True)
+        else:
+            print('company_with_mathan')
+            records = Loan.objects.all().order_by('-id')
+            serializer = LoanSerializer(records, many=True)
+        return success(serializer.data)
+    
+    except Loan.DoesNotExist:
+        # Return an error response if the {model_name} does not exist
+        return error('Loan does not exist')
+    except Exception as e:
+        # Return an error response with the exception message
+        return error(f"An error occurred: {e}")
 
