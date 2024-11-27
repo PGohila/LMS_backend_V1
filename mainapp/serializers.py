@@ -35,6 +35,13 @@ class CurrencySerializer(serializers.ModelSerializer):
         fields = "__all__"
 
 
+class CustomerAccountSerializer(serializers.ModelSerializer):
+    company = CompanySerializer()
+
+    class Meta:
+        model = CustomerAccount
+        fields = "__all__"
+
 class CustomerSerializer(serializers.ModelSerializer):
     company_id = CompanySerializer()
 

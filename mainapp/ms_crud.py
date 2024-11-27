@@ -16,6 +16,7 @@ from datetime import timedelta,datetime
 from dateutil.relativedelta import relativedelta
 from .loan_calculation import *
 from django.shortcuts import get_object_or_404
+from django.utils.timezone import now
 def create_company(name,address,email,phone,registration_number,is_active=False, description = None,incorporation_date = None):
     try:
         request = get_current_request()
@@ -255,6 +256,14 @@ def view_customer(customer_id=None,company_id=None):
     except Exception as e:
         return error(f"An error occurred: {e}")
 
+def getting_customeraccount(customer_id):
+    try:
+        records = CustomerAccount.objects.get(customer_id = customer_id)
+        serializers = CustomerAccountSerializer(records)
+
+        return success(serializers.data)
+    except Exception as e:
+        return error(f"An error occurred: {e}")
 
 def delete_customer(customer_id):
     try:
@@ -1019,9 +1028,11 @@ def view_loan(loan_id=None,loanapp_id = None,company=None):
             return error('Login required')
         
         if loan_id is not None:
+            
             record = Loan.objects.get(pk=loan_id)
+            print("==================",record.id)
             serializer = LoanSerializer(record)
-        if loanapp_id is not None:
+        elif loanapp_id is not None:
             record = Loan.objects.filter(loanapp_id_id=loanapp_id).last()
             serializer = LoanSerializer(record)
 
@@ -1227,7 +1238,7 @@ def view_loanagreement(loanagreement_id=None,company_id = None):
 
 def getting_completed_agreement(company_id):
     try:
-        records = Loan.objects.filter(company_id = company_id,is_active=True,status__iexact = 'approved').order_by("-id")
+        records = Loan.objects.filter(company_id = company_id,is_active=True,status__iexact = 'approved',disbursement_status__in = ["Pending","Partially Paid"]).order_by("-id")
         serializer = LoanSerializer(records, many=True)
         return success(serializer.data)
     
@@ -1298,8 +1309,9 @@ def getting_approvedloan(company_id):
     except Exception as e:
         return error(f"An error occurred: {e}")
 
-def create_disbursement(company_id, customer_id,loan_id, loan_application_id, amount, disbursement_type, disbursement_status,disbursement_method,currency_id,bank=None,notes=None):
+def create_disbursement(company_id, customer_id,loan_id, loan_application_id, amount, disbursement_type, disbursement_status,disbursement_method=None,currency_id=None,bank=None,notes=None):
     try:
+        print("===================")
         request = get_current_request()
         if not request.user.is_authenticated:
             return error('Login required')
@@ -1308,7 +1320,7 @@ def create_disbursement(company_id, customer_id,loan_id, loan_application_id, am
         Company.objects.get(pk=company_id)
         Customer.objects.get(pk=customer_id)
         LoanApplication.objects.get(pk=loan_application_id)
-        Currency.objects.get(pk=currency_id)
+    
 
         # Generate unique disbursement ID
         generate_id = Disbursement.objects.last()
@@ -1320,13 +1332,27 @@ def create_disbursement(company_id, customer_id,loan_id, loan_application_id, am
         loanapp = LoanApplication.objects.get(pk=loan_application_id)
         loan = Loan.objects.get(pk = loan_id)
 
+        #=== customer account ======
+        customeraccount = CustomerAccount.objects.get(id = bank)
+
         # 1 st scenario disbursement type one-off and Disbursement Beneficiary Pay Self
         if loanapp.disbursement_type == 'one_off':
             if loanapp.loantype.disbursement_beneficiary == 'pay_self':
-                loan_account = LoanAccount.objects.get(loan_id = loan.id)
-                loan_account.principal_amount = amount
-                loan_account.outstanding_balance = amount
-                loan_account.save()
+                #============= transfer amount loanamount from loan account to disbursement account ======
+                loanact = LoanAccount.objects.get(loan_id = loan.id)
+                loanact.principal_amount -= loan.approved_amount   # amount depit from loanaccount
+                disbursementact = LoanDisbursementAccount.objects.get(loan_id = loan.id)
+                disbursementact.amount += loan.approved_amount # amount credit to disbursement account
+                loanact.save()
+                disbursementact.save()
+
+                # ========= amount transfer to customer account =============
+                customeraccount.account_balance = loan.approved_amount # amount credit to borrower account
+                customeraccount.save()
+                disbursementact.amount -= loan.approved_amount # amount debit to disbursement account
+                disbursementact.save()
+
+
                 print("One-off disbursement to loan account completed.")
             elif loanapp.loantype.disbursement_beneficiary == 'pay_milestone':  
                 # Prevent customer from withdrawing the loan amount for controlled purposes
@@ -1334,13 +1360,30 @@ def create_disbursement(company_id, customer_id,loan_id, loan_application_id, am
 
         elif loanapp.disbursement_type == 'trenches': 
             if loanapp.loantype.disbursement_beneficiary == 'pay_self':
-                loan_account = LoanAccount.objects.get(loan_id = loan.id)
-                loan_account.principal_amount += amount
-                loan_account.outstanding_balance += amount
-                loan_account.save()
+                #============= transfer amount loanamount from loan account to disbursement account ======
+                loanact = LoanAccount.objects.get(loan_id = loan.id)
+                loanact.principal_amount -= loan.approved_amount   # amount depit from loanaccount
+                disbursementact = LoanDisbursementAccount.objects.get(loan_id = loan.id)
+                disbursementact.amount += loan.approved_amount # amount credit to disbursement account
+                loanact.save()
+                disbursementact.save()
+
+                # ========= amount transfer to customer account =============
+                customeraccount.account_balance = loan.approved_amount # amount credit to borrower account
+                customeraccount.save()
+                disbursementact.amount -= loan.approved_amount # amount debit to disbursement account
+                disbursementact.save()
                 print("One-off disbursement to loan account completed.")
 
             elif loanapp.loantype.disbursement_beneficiary == 'pay_milestone':
+                #============= transfer amount loanamount from loan account to disbursement account ======
+                loanact = LoanAccount.objects.get(loan_id = loan.id)
+                loanact.principal_amount -= amount   # amount depit from loanaccount
+                disbursementact = LoanDisbursementAccount.objects.get(loan_id = loan.id)
+                disbursementact.amount += amount # amount credit to disbursement account
+                loanact.save()
+                disbursementact.save() 
+
                 milestone_account = MilestoneAccount.objects.get(loan_id = loan.id)
                 milestone_account.milestone_cost += amount
                 milestone_account.status += 'Completed'
@@ -1358,7 +1401,7 @@ def create_disbursement(company_id, customer_id,loan_id, loan_application_id, am
             disbursement_type=disbursement_type,
             disbursement_method = disbursement_method,
             disbursement_status=disbursement_status,
-            currency_id = currency_id,
+       
             bank_id = bank,
             notes=notes,
         )
@@ -1366,8 +1409,18 @@ def create_disbursement(company_id, customer_id,loan_id, loan_application_id, am
         loan.disbursement_amount = float(loan.disbursement_amount) + float(amount)
         loanapp.workflow_stats = 'Disbursment'
         loan.workflow_stats = 'Disbursment'
-        loan.disbursement_amount = amount
+        loan.disbursement_amount += float(amount)
+        loan.save()
         loanapp.save()
+    
+        if loan.disbursement_amount >= loan.approved_amount :
+            
+            loan.disbursement_status = "Paid"
+        elif loan.disbursement_amount < loan.approved_amount and loan.paid_amount != 0.0:
+            loan.disbursement_status = "Partially_Paid"
+        else:
+            loan.disbursement_status = "Pending"
+
         loan.save()
 
         try:
@@ -1384,12 +1437,13 @@ def create_disbursement(company_id, customer_id,loan_id, loan_application_id, am
         return error('Invalid Customer ID')
     except LoanApplication.DoesNotExist:
         return error('Invalid Loan Application ID')
-    except Currency.DoesNotExist:
-        return error('Invalid Payment Method ID')
+   
     except ValidationError as e:
         return error(f"Validation Error: {e}")
     except Exception as e:
         return error(f"An error occurred: {e}")
+
+
 
 def update_disbursement(disbursement_id, company_id, customer_id,loan_id, loan_application_id, amount, disbursement_type, disbursement_status,disbursement_method,currency_id,bank=None,notes=None):
     try:
@@ -3723,10 +3777,10 @@ def stages_setup_delete(stages_id):
 def create_loanvaluechain(company_id,loanapp_id):
     try:
         records = Loan.objects.filter(company_id = company_id,loanapp_id__disbursement_type = 'trenches',id=loanapp_id)
-        print('records',records)
+
         for data in records:
             valuechain = ValueChainSetUps.objects.filter(loan_type_id = data.loanapp_id.loantype.id)
-            print('valuechain',valuechain)
+        
             for data1 in valuechain: # looping valuechain
                 # Generate a unique offer ID
                 chainid = LoanValuechain.objects.last()
@@ -3763,7 +3817,7 @@ def create_loanvaluechain(company_id,loanapp_id):
                         loan_type_id = data1.loan_type.id,
                         valuechain_id_id = loanchain.id,
                         milestone_name = data2.milestone_name,
-                        max_amount  = 0.0,
+                        amount  = 0.0,
                         description = data2.description,
                         active = True,
                         sequence = 1,
@@ -4701,3 +4755,165 @@ def view_audit():
         return error(f"Audit with ID {AuditTrail} not found")
     except Exception as e:
         return error(f"An error occurred: {e}")
+
+def getting_penalty_loans(company_id):
+    try:
+        overdue_schedules = RepaymentSchedule.objects.filter(company_id = company_id,
+            repayment_date__lt=now().date(),  # Repayment date is in the past
+            repayment_status="Pending"        # Status is still pending
+        )
+        loans = [data.loan_id.id for data in overdue_schedules]
+
+        records = Loan.objects.filter(id__in = loans)
+        serializer = LoanSerializer(records,many = True)
+        return success(serializer.data)
+    except Exception as e:
+        return error(f"An error occurred: {e}")
+
+def getting_overdue(company_id,loan_ID):
+    try:
+        overdue_schedules = RepaymentSchedule.objects.filter(company_id = company_id,
+            repayment_date__lt=now().date(),  # Repayment date is in the past
+            repayment_status="Pending",loan_id_id = loan_ID        # Status is still pending
+        )
+        serializer = RepaymentscheduleSerializer(overdue_schedules,many = True)
+        
+        return success(serializer.data)
+    except Exception as e:
+        return error(f"An error occurred: {e}")
+
+def create_penalty(company, loan, penalty_amount, penalty_reason, repayment_schedule=None):
+    try:
+        """
+        Create a penalty for a loan or a specific repayment schedule.
+
+        Args:
+            company (Company): The company instance.
+            loan (Loan): The loan instance.
+            penalty_amount (float): Amount of the penalty.
+            penalty_reason (str): Reason for the penalty.
+            repayment_schedule (RepaymentSchedule, optional): Related repayment schedule.
+        
+        Returns:
+            Penalty: The created penalty instance.
+        """
+
+        penalty_id = f"PNL-{loan.loan_id}-{int(date.today().strftime('%Y%m%d'))}"
+        penalty = Penalty.objects.create(
+            company=company,
+            penalty_id=penalty_id,
+            loan=loan,
+            repayment_schedule=repayment_schedule,
+            penalty_date=date.today(),
+            penalty_amount=penalty_amount,
+            penalty_reason=penalty_reason,
+            status="unpaid",
+        )
+        return success(penalty)
+    except Exception as e:
+            return error(f"An error occurred: {e}")
+
+def get_penalties_for_loan(loan):
+    """
+    Retrieve all penalties for a given loan.
+
+    Args:
+        loan (Loan): The loan instance.
+    
+    Returns:
+        QuerySet: A queryset of penalty instances.
+    """
+    records = Penalty.objects.filter(loan=loan)
+
+    return 
+
+def get_unpaid_penalties(loan):
+    """
+    Retrieve all unpaid penalties for a given loan.
+
+    Args:
+        loan (Loan): The loan instance.
+    
+    Returns:
+        QuerySet: A queryset of unpaid penalty instances.
+    """
+
+
+    return Penalty.objects.filter(loan=loan, status="unpaid")
+
+def pay_penalty(penalty, transaction_reference):
+    """
+    Process payment for a penalty.
+
+    Args:
+        penalty (Penalty): The penalty instance to be paid.
+        transaction_reference (str): Reference for the payment transaction.
+    
+    Returns:
+        Penalty: The updated penalty instance.
+    """
+    if penalty.status == "unpaid":
+        penalty.status = "paid"
+        penalty.payment_date = date.today()
+        penalty.transaction_reference = transaction_reference
+        penalty.save()
+        return penalty
+    else:
+        raise ValueError("Penalty is already paid or waived.")
+
+def calculate_late_penalty(loan, repayment_schedule, penalty_rate):
+    """
+    Calculate the penalty for a late repayment.
+
+    Args:
+        loan (Loan): The loan instance.
+        repayment_schedule (RepaymentSchedule): The specific repayment schedule.
+        penalty_rate (float): Penalty rate (e.g., 0.05 for 5% of the installment amount).
+    
+    Returns:
+        float: The calculated penalty amount.
+    """
+    if repayment_schedule.repayment_status == "Pending" and repayment_schedule.repayment_date < date.today():
+        overdue_days = (date.today() - repayment_schedule.repayment_date).days
+        penalty_amount = repayment_schedule.instalment_amount * penalty_rate * overdue_days
+        return round(penalty_amount, 2)
+    return 0.0
+
+def waive_penalty(penalty):
+    """
+    Waive a penalty for a loan.
+
+    Args:
+        penalty (Penalty): The penalty instance to waive.
+    
+    Returns:
+        Penalty: The updated penalty instance.
+    """
+    if penalty.status == "unpaid":
+        penalty.status = "waived"
+        penalty.save()
+        return penalty
+    else:
+        raise ValueError("Penalty cannot be waived as it is already resolved.")
+
+def generate_penalty_report(loan=None, start_date=None, end_date=None):
+    """
+    Generate a penalty report.
+
+    Args:
+        loan (Loan, optional): The loan instance to filter penalties.
+        start_date (date, optional): Start date for the report range.
+        end_date (date, optional): End date for the report range.
+    
+    Returns:
+        QuerySet: A queryset of penalty instances matching the criteria.
+    """
+    from .models import Penalty
+    query = Penalty.objects.all()
+    if loan:
+        query = query.filter(loan=loan)
+    if start_date:
+        query = query.filter(penalty_date__gte=start_date)
+    if end_date:
+        query = query.filter(penalty_date__lte=end_date)
+    return query

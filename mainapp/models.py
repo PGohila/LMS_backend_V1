@@ -381,6 +381,8 @@ class Loan(models.Model):
         ('Processing', 'Processing'),
         ('Loan Closed', 'Loan Closed'),
         ])
+    disbursement_status = models.CharField(max_length=50,choices=[
+        ('Pending', 'Pending'),('Partially Paid', 'Partially Paid'),('Paid', 'Paid')],default="Pending")
     is_eligible = models.BooleanField(default=False) # customer eligible checking
     eligible_rejection_reason = models.TextField(null=True, blank=True)
     checked_on = models.DateTimeField(null=True, blank=True)
@@ -665,9 +667,9 @@ class Disbursement(models.Model):
         ('cash', 'Cash'),
         ('prepaid_card','Prepaid Card'),
         ('Third-Party','Third-Party')
-    ])
-    bank = models.ForeignKey(BankAccount,on_delete=models.CASCADE,blank=True,null=True)
-    currency = models.ForeignKey(Currency,on_delete=models.CASCADE)
+    ],blank=True,null=True)
+    bank = models.ForeignKey(CustomerAccount,on_delete=models.CASCADE)
+    currency = models.ForeignKey(Currency,on_delete=models.CASCADE,blank=True,null=True)
     notes = models.TextField(blank=True,null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -699,6 +701,49 @@ class RepaymentSchedule(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+class Penalty(models.Model):
+    company = models.ForeignKey(
+        Company, 
+        on_delete=models.CASCADE, 
+        related_name='%(class)s_company'
+    )
+    penalty_id = models.CharField(max_length=50, unique=True)  # Unique penalty identifier
+    loan = models.ForeignKey(
+        Loan, 
+        on_delete=models.CASCADE, 
+        related_name='%(class)s_loan'
+    )  # Penalty is linked to a loan
+    repayment_schedule = models.ForeignKey(
+        RepaymentSchedule, 
+        on_delete=models.CASCADE, 
+        related_name='%(class)s_repayment_schedule',
+        blank=True, 
+        null=True
+    )  # Optionally linked to a specific repayment schedule
+    penalty_date = models.DateField(auto_now_add=True)  # When the penalty was incurred
+    penalty_amount = models.FloatField(default=0.0)  # Amount of the penalty
+    penalty_reason = models.TextField()  # Reason for the penalty (e.g., late payment, overdue)
+    status = models.CharField(
+        max_length=20, 
+        choices=[
+            ('unpaid', 'Unpaid'),
+            ('waived', 'Waived'),
+            ('paid', 'Paid')
+        ], 
+        default='unpaid'
+    )  # Penalty status
+    payment_date = models.DateField(blank=True, null=True)  # Date when penalty was resolved
+    transaction_reference = models.CharField(
+        max_length=100, 
+        blank=True, 
+        null=True
+    )  # Reference for penalty payment transaction
+    created_at = models.DateTimeField(auto_now_add=True)  # Timestamp for record creation
+    updated_at = models.DateTimeField(auto_now=True)  # Timestamp for record updates
+
+    def __str__(self):
+        return f"Penalty {self.penalty_id} for Loan {self.loan.loan_id}"
+    
 class Payments(models.Model):
     company = models.ForeignKey(Company,on_delete=models.CASCADE)
     payment_id = models.CharField(max_length=50,unique=True)
