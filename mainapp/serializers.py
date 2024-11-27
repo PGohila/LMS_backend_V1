@@ -111,10 +111,17 @@ class CollateralDocumentsSerializer(serializers.ModelSerializer):
         fields = "__all__"
 
 
+class TemplateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Template
+        fields = '__all__'
+
+
 class LoanagreementSerializer(serializers.ModelSerializer):
     loan_id = LoanSerializer()
     loanapp_id = LoanapplicationSerializer()
     customer_id = CustomerSerializer()
+    agreement_template=TemplateSerializer()
     class Meta:
         model = LoanAgreement
         fields = "__all__"
