@@ -3878,7 +3878,7 @@ def value_chain_delete_v1(value_chain_id):
     except Exception as e:
         return error(f"An error occurred: {e}")
 
-def milstone_edit_v1(milestone_id,amount):
+def milestone_edit_v1(milestone_id,amount):
     try:
         records = LoanMilestone.objects.filter(id=milestone_id)
         if records.exists():
@@ -3889,7 +3889,7 @@ def milstone_edit_v1(milestone_id,amount):
     except Exception as e:
         return error(f"An error occurred: {e}")
 
-def milstone_delete_v1(activity_id):
+def milestone_activity_delete_v1(activity_id):
     try:
         records = LoanMilestoneStages.objects.filter(id=activity_id)
         if records.exists():
@@ -3899,7 +3899,7 @@ def milstone_delete_v1(activity_id):
         return error(f"An error occurred: {e}")
 
 
-def milstone_activity_edit_v1(activity_id,amount):
+def milestone_activity_edit_v1(activity_id,amount):
     try:
         records = LoanMilestoneStages.objects.filter(id=activity_id)
         if records.exists():
@@ -3910,7 +3910,7 @@ def milstone_activity_edit_v1(activity_id,amount):
     except Exception as e:
         return error(f"An error occurred: {e}")
 
-def milstone_activity_delete_v1(milestone_id):
+def milestone_delete_v1(milestone_id):
     try:
         records = LoanMilestone.objects.filter(id=milestone_id)
         if records.exists():
@@ -3920,7 +3920,7 @@ def milstone_activity_delete_v1(milestone_id):
         return error(f"An error occurred: {e}")
 
 
-def milstone_activity_create_v1(milestone_id,activity_name,amount,description=None,start_date=None,end_date=None):
+def milestone_activity_create_v1(milestone_id,activity_name,amount,description=None,start_date=None,end_date=None):
     try:
         milestone = LoanMilestone.objects.get(id=milestone_id)
         records = LoanMilestoneStages.objects.create(
@@ -3932,6 +3932,33 @@ def milstone_activity_create_v1(milestone_id,activity_name,amount,description=No
             description=description,
             start_date=start_date,
             end_date=end_date,
+            )
+        return success('Created successfully')
+    except Exception as e:
+        return error(f"An error occurred: {e}")
+
+
+def milestone_create_v1(valuechain_id,milestone_name,amount,description=None,due_date=None):
+    try:
+        valuechain_record = LoanValuechain.objects.get(id=valuechain_id)
+        milestoneid = LoanMilestone.objects.last()
+        last_id = '000'
+        if milestoneid:
+            last_id = milestoneid.unique_id[10:]
+        uniqueid = unique_id('LMS', last_id)
+
+        records = LoanMilestone.objects.create(
+            company=valuechain_record.company,
+            unique_id=uniqueid,
+            loan=valuechain_record.loan,
+            loan_type=valuechain_record.loan_type,
+            valuechain_id=valuechain_record,
+            milestone_name=milestone_name,
+            amount=amount,
+            description=description,
+            due_date=due_date,
+            sequence=0,
+            active=True,
             )
         return success('Created successfully')
     except Exception as e:
@@ -4659,8 +4686,9 @@ def view_template(template_id=None):
         if template_id:
             template = Template.objects.get(pk=template_id)
             serializer = TemplateSerializer(template)
-        template = Template.objects.all()
-        serializer = TemplateSerializer(template,many=True)
+        else:
+            template = Template.objects.all()
+            serializer = TemplateSerializer(template,many=True)
         return success(serializer.data)
 
     except Template.DoesNotExist:
@@ -4917,3 +4945,110 @@ def generate_penalty_report(loan=None, start_date=None, end_date=None):
     if end_date:
         query = query.filter(penalty_date__lte=end_date)
     return query
+
+
+import re
+from django.utils.html import escape
+
+def template_fields(loan_id,template_id):
+    try:
+        template = Template.objects.get(pk=template_id)
+        loan = Loan.objects.get(pk=loan_id)
+        
+        # Find all placeholders in the template content for initial form rendering
+        placeholders = [placeholder.strip() for placeholder in re.findall(r'\{\{(\s*\w+\s*)\}\}', template.content)]
+        placeholders_with_value = tag_replacement(placeholders, loan_id)
+        return success(placeholders_with_value)
+
+    except Template.DoesNotExist:
+        return error(f"Template with ID {template_id} not found")
+    except Exception as e:
+        return error(e)
+    
+
+def tag_replacement(tag_list, loan_id):
+    loan = Loan.objects.get(pk=loan_id)
+    result = []
+    
+    for data in tag_list:
+        dic = {'name': data, 'value': None}  # Initialize the dictionary
+        print('loan.customer',loan.customer)
+        if data == 'customer_first_name' or data == 'cutomer_first_name':
+            dic['value'] = loan.customer.firstname
+        elif data == 'customer_lastname' or data == 'cutomer_lastname':
+            dic['value'] = loan.customer.lastname
+        elif data == 'customer_email' or data == 'cutomer_email':
+            dic['value'] = loan.customer.email
+        elif data == 'customer_age' or data == 'cutomer_age':
+            dic['value'] = loan.customer.age
+        elif data == 'customer_phone_number' or data == 'cutomer_phone_number':
+            dic['value'] = loan.customer.phone_number
+        elif data == 'customer_address' or data == 'cutomer_address':
+            dic['value'] = loan.customer.address
+        elif data == 'dateofbirth':
+            dic['value'] = loan.customer.dateofbirth
+        elif data == 'application_id':
+            dic['value'] = loan.loanapp_id.application_id
+        elif data == 'loan_type':
+            dic['value'] = loan.loanapp_id.loantype.loantype
+        elif data == 'loan_amount':
+            dic['value'] = loan.loan_amount
+        elif data == 'loan_purpose':
+            dic['value'] = loan.loan_purpose
+        elif data == 'approved_amount':
+            dic['value'] = loan.approved_amount
+        elif data == 'interest_rate':
+            dic['value'] = loan.interest_rate
+        elif data == 'tenure':
+            dic['value'] = loan.tenure
+        elif data == 'tenure_type':
+            dic['value'] = loan.tenure_type
+        elif data == 'repayment_schedule':
+            dic['value'] = loan.repayment_schedule
+        elif data == 'repayment_mode':
+            dic['value'] = loan.repayment_mode
+        elif data == 'interest_basics':
+            dic['value'] = loan.interest_basics
+        elif data == 'loan_calculation_method':
+            dic['value'] = loan.loan_calculation_method
+        
+        result.append(dic)
+    
+    return result
+
+def agreement_draft(loan_id,agreement_template,agreement_template_value):
+    try:
+        loan_obj = Loan.objects.get(id=loan_id)
+        generate_id = LoanAgreement.objects.last()
+        last_id = '00'
+        if generate_id:
+            last_id = generate_id.agreement_id[9:]
+        agreement_id = unique_id('LG',last_id)
+
+        LoanAgreement.objects.create(
+            loan_id=loan_obj,
+            company=loan_obj.company,
+            agreement_id=agreement_id,
+            loanapp_id=loan_obj.loanapp_id,
+            customer_id=loan_obj.customer,
+            agreement_template_id=agreement_template,
+            agreement_template_value=agreement_template_value,
+            agreement_status='Active',
+            disbursement_approval='Active'
+        )
+        return success('Record created successfully')
+    except Exception as e:
+        return error(e)
+
+
+def agreement_signature_update(agreement_id,borrower_signature=None,lender_signature=None):
+    try:
+        obj = LoanAgreement.objects.get(id=agreement_id)
+        if borrower_signature:
+            obj.borrower_signature=borrower_signature
+        if lender_signature:
+            obj.lender_signature=lender_signature
+        obj.save()
+        return success('Record created successfully')
+    except Exception as e:
+        return error(e)
