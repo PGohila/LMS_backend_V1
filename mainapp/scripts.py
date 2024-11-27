@@ -71,14 +71,14 @@ def calculate_existing_liabilities(loans):
 # loan eligibilitity checking
 def check_loan_eligibility(applicant_details, loan_amount):
     errors = []
-    print("============xjassasa")
+   
     # Age check
     if not (21 <= applicant_details.age <= 65):
         errors.append("Applicant does not meet the age criteria (21-65 years).")
-    
+
     # Income check
     minimum_income = 25000  # Example threshold # loan type minimum income
-    if applicant_details.customer_income >= minimum_income:
+    if applicant_details.customer_income < minimum_income:
         errors.append(f"Monthly income is below the threshold of {minimum_income}. income {applicant_details.customer_income}")
     
     # Credit score check
@@ -87,10 +87,12 @@ def check_loan_eligibility(applicant_details, loan_amount):
         errors.append(f"Credit score is below the required {minimum_credit_score}.")
     
     # Debt-to-income ratio check
-    debt_to_income_ratio = (applicant_details.existing_liabilities / applicant_details.customer_income) * 100
-    print("===================",debt_to_income_ratio)
-    if debt_to_income_ratio > 40:  # Example threshold
-        errors.append("Debt-to-income ratio exceeds the allowable limit of 40%.")
+    if applicant_details.customer_income > 0:  # Prevent division by zero
+        debt_to_income_ratio = (applicant_details.existing_liabilities / applicant_details.customer_income) * 100
+        if debt_to_income_ratio > 40:  # Example threshold
+            errors.append(
+                f"Debt-to-income ratio exceeds the allowable limit of 40%. Current ratio: {debt_to_income_ratio:.2f}%"
+            )
     
     # Final decision
     if errors:
