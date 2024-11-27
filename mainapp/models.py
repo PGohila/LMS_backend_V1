@@ -592,7 +592,7 @@ class InterestAccount(models.Model):
 class MilestoneAccount(models.Model):
     company = models.ForeignKey(Company,on_delete=models.CASCADE, related_name='%(class)s_company')
     loan = models.OneToOneField(Loan, on_delete=models.CASCADE, related_name="loan_detail1")
-    milestone_header = models.ForeignKey('LoanValuechain', on_delete=models.CASCADE)  # This is the value chain or scheme-based identifier
+    milestone_header = models.ForeignKey('LoanValuechain', on_delete=models.CASCADE, blank=True,null=True)  # This is the value chain or scheme-based identifier
     milestone_cost = models.FloatField(default=0.0)
     disbursement_date = models.DateTimeField(auto_now_add=True)
     status = models.CharField(max_length=50, default='pending', choices=[('pending', 'Pending'), ('completed', 'Completed')])
