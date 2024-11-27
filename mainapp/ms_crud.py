@@ -1613,7 +1613,7 @@ def getting_schedule(schedule_id = None,uniques_id = None):
 
 def paid_schedule(schedule_id):
     try:
-        schedule=RepaymentSchedule.objects.get(schedule_id= schedule_id)
+        schedule=RepaymentSchedule.objects.get(id = schedule_id)
         if schedule:
             schedule.repayment_status = 'Paid'
             schedule.paid_amount=schedule.instalment_amount
@@ -4719,6 +4719,7 @@ def create_penalty(company, loan, penalty_amount, penalty_reason, repayment_sche
         schedule = RepaymentSchedule.objects.get(id = repayment_schedule)
         schedule.total_penalty_amt += penalty_amount
         schedule.payable_penalty_amt += penalty_amount
+        schedule.penalty_reason = penalty_reason
         schedule.save()
 
         return success('Successfully saved')
