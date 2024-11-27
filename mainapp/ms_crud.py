@@ -1563,9 +1563,11 @@ def getting_repayment_schedules(company_id,loanapp_id):
 
 def getting_next_schedules(company_id, loanapp_id):
     try:
+        print('comp',company_id)
+        print('loan',loanapp_id)
         # Filter repayment schedules based on company and loan application
-        instance = RepaymentSchedule.objects.filter(company_id=company_id, loan_application_id=loanapp_id, repayment_status='Pending')
-        
+        instance = RepaymentSchedule.objects.filter(company_id=company_id, loan_id_id=loanapp_id, repayment_status='Pending')
+        print('instance',instance)
         # Order by repayment date to find the earliest pending repayment
         next_due_schedule = instance.order_by('repayment_date').first()
 
@@ -3750,7 +3752,7 @@ def value_chain_delete_v1(value_chain_id):
     except Exception as e:
         return error(f"An error occurred: {e}")
 
-def milstone_edit_v1(milestone_id,amount):
+def milestone_edit_v1(milestone_id,amount):
     try:
         records = LoanMilestone.objects.filter(id=milestone_id)
         if records.exists():
@@ -3761,7 +3763,7 @@ def milstone_edit_v1(milestone_id,amount):
     except Exception as e:
         return error(f"An error occurred: {e}")
 
-def milstone_delete_v1(activity_id):
+def milestone_activity_delete_v1(activity_id):
     try:
         records = LoanMilestoneStages.objects.filter(id=activity_id)
         if records.exists():
@@ -3771,7 +3773,7 @@ def milstone_delete_v1(activity_id):
         return error(f"An error occurred: {e}")
 
 
-def milstone_activity_edit_v1(activity_id,amount):
+def milestone_activity_edit_v1(activity_id,amount):
     try:
         records = LoanMilestoneStages.objects.filter(id=activity_id)
         if records.exists():
@@ -3782,7 +3784,7 @@ def milstone_activity_edit_v1(activity_id,amount):
     except Exception as e:
         return error(f"An error occurred: {e}")
 
-def milstone_activity_delete_v1(milestone_id):
+def milestone_delete_v1(milestone_id):
     try:
         records = LoanMilestone.objects.filter(id=milestone_id)
         if records.exists():
@@ -3792,7 +3794,7 @@ def milstone_activity_delete_v1(milestone_id):
         return error(f"An error occurred: {e}")
 
 
-def milstone_activity_create_v1(milestone_id,activity_name,amount,description=None,start_date=None,end_date=None):
+def milestone_activity_create_v1(milestone_id,activity_name,amount,description=None,start_date=None,end_date=None):
     try:
         milestone = LoanMilestone.objects.get(id=milestone_id)
         records = LoanMilestoneStages.objects.create(
@@ -3804,6 +3806,33 @@ def milstone_activity_create_v1(milestone_id,activity_name,amount,description=No
             description=description,
             start_date=start_date,
             end_date=end_date,
+            )
+        return success('Created successfully')
+    except Exception as e:
+        return error(f"An error occurred: {e}")
+
+
+def milestone_create_v1(valuechain_id,milestone_name,amount,description=None,due_date=None):
+    try:
+        valuechain_record = LoanValuechain.objects.get(id=valuechain_id)
+        milestoneid = LoanMilestone.objects.last()
+        last_id = '000'
+        if milestoneid:
+            last_id = milestoneid.unique_id[10:]
+        uniqueid = unique_id('LMS', last_id)
+
+        records = LoanMilestone.objects.create(
+            company=valuechain_record.company,
+            unique_id=uniqueid,
+            loan=valuechain_record.loan,
+            loan_type=valuechain_record.loan_type,
+            valuechain_id=valuechain_record,
+            milestone_name=milestone_name,
+            amount=amount,
+            description=description,
+            due_date=due_date,
+            sequence=0,
+            active=True,
             )
         return success('Created successfully')
     except Exception as e:
@@ -4531,8 +4560,9 @@ def view_template(template_id=None):
         if template_id:
             template = Template.objects.get(pk=template_id)
             serializer = TemplateSerializer(template)
-        template = Template.objects.all()
-        serializer = TemplateSerializer(template,many=True)
+        else:
+            template = Template.objects.all()
+            serializer = TemplateSerializer(template,many=True)
         return success(serializer.data)
 
     except Template.DoesNotExist:
@@ -4735,3 +4765,4 @@ def calculate_late_penalty(loan, repayment_schedule, penalty_rate):
         penalty_amount = repayment_schedule.instalment_amount * penalty_rate * overdue_days
         return round(penalty_amount, 2)
     return 0.0
+
