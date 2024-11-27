@@ -193,6 +193,70 @@ def create_customer(company_id, firstname, lastname, email, phone_number, addres
     except Exception as e:
         return error(f"An error occurred: {e}")
 
+
+def create_customer_v1(firstname, lastname, email, phone_number, address, dateofbirth):
+    """ ============== Customer Creation ==================="""
+    try:
+        request = get_current_request()
+        if not request.user.is_authenticated:
+            return error('Login required')    
+
+        # if company_id is not None: 
+        company_id = Company.objects.all().last().id
+        age = 30
+        customer_income = 50000
+        # generate Unique id 
+        generate_id = Customer.objects.last()
+        last_id = '00'
+        if generate_id:
+            last_id = generate_id.customer_id[9:]
+        customer_id = unique_id('CM',last_id)
+
+        instance = Customer.objects.create(
+            company_id_id = company_id,
+            customer_id = customer_id,
+            firstname = firstname,
+            lastname = lastname,
+            email = email,
+            phone_number = phone_number,
+            address = address,
+            dateofbirth = dateofbirth,
+            age = age,
+            customer_income = customer_income,
+         
+            expiry_date = datetime.now(),
+            is_active = True,
+        )
+        customer_id=instance.id
+      
+        create_folder_for_all_customer(customer_id,company_id)
+        #==================== createborrower Account ==================
+        CustomerAccount.objects.create(
+            company_id = company_id,
+            customer_id = customer_id,
+            account_number = f"B00{customer_id}",
+            bank_name = 'BB',
+            branch_name = None,
+            ifsc_code = None,  # For Indian banks, or SWIFT code for international banks
+            account_balance = 0.0,
+            account_status = 'active'
+        )
+        try:
+            log_audit_trail(request.user.id,'Customer Registration', instance, 'Create', 'Object Created.')
+        except Exception as e:
+            return error(f"An error occurred: {e}")
+
+        return success(f'Successfully created {instance}')
+    except Company.DoesNotExist:
+        return error('Invalid Company ID: Destination not found.')
+    except IdentificationType.DoesNotExist:
+        return error('Invalid Identificationtype ID: Destination not found.')
+    except ValidationError as e:
+        return error(f"Validation Error: {e}")
+    except Exception as e:
+        return error(f"An error occurred: {e}")
+
+
 def update_customer(customer_id,company_id=None, firstname=None, lastname=None,age=None, email=None, phone_number=None, address=None,customer_income=None, dateofbirth=None, expiry_date=None, is_active=None):
     try:
         request = get_current_request()

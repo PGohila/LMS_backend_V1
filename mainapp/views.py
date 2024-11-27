@@ -146,36 +146,27 @@ class MSAPIModule(APIView):
             return Response({'error': str(error)}, status=status.HTTP_404_NOT_FOUND)
    
 class EDMSModule(APIView):
-    print("apiapi4567890")
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = MSSerializer
 
     def post(self,request,*args,**kwargs):
         try:
-            print('===request',request)
-            print('===request',request.data)
             serializers = MSSerializer(data=request.data)
             if serializers.is_valid():
-                print('serializers',serializers.data)
                 ms_id = serializers.data['ms_id']
                 ms_payload = serializers.data['ms_payload']
-                print('ms_payload',type(ms_payload))
                 if isinstance(ms_payload,str):
                     ms_payload = json.loads(ms_payload)
                 file = request.data.get('files')                
                 if file:
                     ms_payload['document_upload'] = file
-                print('file',file)
                 get_response = check_ms_id_exists_or_not(ms_id)
-                print('get_response ',get_response)
                 # check payaload key are exists or not
                 get_ms_payload=payload_key_validation(ms_id,ms_payload)
-                print('get_ms_payload ',get_ms_payload)
                 if get_response == 'valid_ms_id':
                 # get micro service name 
                     get_obj = MSRegistration.objects.get(mservice_id=ms_id)
                     ms_function = get_obj.mservice_name
-                    print('ms_function ',ms_function)
                     is_auth = get_obj.is_authenticate
                     get_module_name = get_module_msid_wise(ms_id)
                     # call_all_function(app name,micro service filename), function name
