@@ -694,6 +694,7 @@ class RepaymentSchedule(models.Model):
     payment_method = models.ForeignKey(PaymentMethod,on_delete=models.CASCADE,related_name='%(class)s_payment_method',blank=True,null=True)
     total_penalty_amt = models.FloatField(default = 0.0)
     payable_penalty_amt = models.FloatField(default = 0.0)
+    penalty_reason = models.CharField(max_length = 100,blank=True,null = True)
     penalty_status = models.CharField(max_length = 50,choices = [
         ('Paid', 'Paid'),
         ('Pending', 'Pending'),
