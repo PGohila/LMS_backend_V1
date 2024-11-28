@@ -4877,7 +4877,10 @@ def template_fields(loan_id,template_id):
     
 
 def tag_replacement(tag_list, loan_id):
-    loan = Loan.objects.get(pk=loan_id)
+    loan = Loan.objects.filter(loanapp_id_id=loan_id)
+    print('loan',loan)
+    print('loan',loan)
+    loan=loan.last()
     result = []
     
     for data in tag_list:
