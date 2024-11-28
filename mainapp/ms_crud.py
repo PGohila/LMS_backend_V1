@@ -4863,7 +4863,7 @@ from django.utils.html import escape
 def template_fields(loan_id,template_id):
     try:
         template = Template.objects.get(pk=template_id)
-        loan = Loan.objects.get(pk=loan_id)
+        # loan = Loan.objects.filter(loanapp_id_id=loan_id)
         
         # Find all placeholders in the template content for initial form rendering
         placeholders = [placeholder.strip() for placeholder in re.findall(r'\{\{(\s*\w+\s*)\}\}', template.content)]
@@ -4931,7 +4931,8 @@ def tag_replacement(tag_list, loan_id):
 
 def agreement_draft(loan_id,agreement_template,agreement_template_value):
     try:
-        loan_obj = Loan.objects.get(id=loan_id)
+        loan_objs = Loan.objects.filter(loanapp_id_id=loan_id)
+        loan_obj=loan_objs.last()
         generate_id = LoanAgreement.objects.last()
         last_id = '00'
         if generate_id:
