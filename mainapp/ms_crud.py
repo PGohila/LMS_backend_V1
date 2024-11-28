@@ -1582,11 +1582,9 @@ def getting_repayment_schedules(company_id,loanapp_id):
 
 def getting_next_schedules(company_id, loanapp_id):
     try:
-        print('comp',company_id)
-        print('loan',loanapp_id)
         # Filter repayment schedules based on company and loan application
         instance = RepaymentSchedule.objects.filter(company_id=company_id, loan_id_id=loanapp_id, repayment_status='Pending')
-        print('instance',instance)
+    
         # Order by repayment date to find the earliest pending repayment
         next_due_schedule = instance.order_by('repayment_date').first()
 
