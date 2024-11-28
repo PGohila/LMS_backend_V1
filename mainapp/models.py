@@ -806,6 +806,7 @@ class Collaterals(models.Model):
 class CollateralDocuments(models.Model):
     company = models.ForeignKey(Company,on_delete=models.CASCADE)
     application_id = models.ForeignKey(LoanApplication,on_delete=models.CASCADE)
+    collateral = models.ForeignKey(Collaterals,on_delete=models.CASCADE)
     document_name = models.CharField(max_length=100)
     additional_documents = models.FileField(upload_to='additional_documents/', blank=True, null=True, help_text="Upload any additional documents related to the collateral.")
     description = models.TextField(blank=True,null=True)
