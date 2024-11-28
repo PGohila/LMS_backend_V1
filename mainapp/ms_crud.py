@@ -517,7 +517,7 @@ def create_loanapplication(company_id, customer_id, loan_amount,loantype_id, loa
             tenure_type = tenure_type,
             description = description,
             workflow_stats = "Submitted",
-            is_active = is_active,
+            is_active = True,
         )
 
         try:
@@ -827,7 +827,12 @@ def loan_approval(company_id,loanapp_id, approval_status = None,rejected_reason 
             instance.save()
 
             # ============ create loan ================
-            loan = create_loan(loanapp_id)
+            loan1 = Loan.objects.filter(loanapp_id_id = loanapp_id)
+            if loan1:
+                return success("Successfully Approved Your Application")
+            else:
+                loan = create_loan(loanapp_id)
+                
             
             loan_id = loan['data']
 
@@ -1763,6 +1768,17 @@ def view_collateraldocument(company_id,collateral_id):
     except Exception as e:
         return error(f"An error occurred: {e}")
 
+def get_collateraldocument_withloanapp(company_id,loan_application_id):
+    try:
+       
+        records = CollateralDocuments.objects.filter(company_id = company_id,application_id_id = loan_application_id)
+        serializer = CollateralDocumentsSerializer(records, many=True).data
+        return success(serializer)
+    except LoanApplication.DoesNotExist:
+        return error('Invalid LoanApplication ID: LoanApplication not found.')
+    except Exception as e:
+        return error(f"An error occurred: {e}")
+
 
 def update_collaterals(collaterals_id,company_id=None, collateral_id=None, loanapp_id=None, customer_id=None, collateral_type_id=None, collateral_value=None, valuation_date=None, collateral_status=None, insurance_status=None,valuation_report=None):
     try:
@@ -1814,7 +1830,7 @@ def update_collaterals(collaterals_id,company_id=None, collateral_id=None, loana
     except Exception as e:
         return error(f"An error occurred: {e}")
 
-def view_collaterals(company_id,loan_appliaction_id):
+def view_collaterals_withdocuments(company_id,loan_appliaction_id):
     try:
         request = get_current_request()
         if not request.user.is_authenticated:
