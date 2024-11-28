@@ -581,7 +581,7 @@ def create_loanapplication(company_id, customer_id, loan_amount,loantype_id, loa
             tenure_type = tenure_type,
             description = description,
             workflow_stats = "Submitted",
-            is_active = is_active,
+            is_active = True,
         )
 
         try:
@@ -891,7 +891,12 @@ def loan_approval(company_id,loanapp_id, approval_status = None,rejected_reason 
             instance.save()
 
             # ============ create loan ================
-            loan = create_loan(loanapp_id)
+            loan1 = Loan.objects.filter(loanapp_id_id = loanapp_id)
+            if loan1:
+                return success("Successfully Approved Your Application")
+            else:
+                loan = create_loan(loanapp_id)
+                
             
             loan_id = loan['data']
 
@@ -1641,11 +1646,9 @@ def getting_repayment_schedules(company_id,loanapp_id):
 
 def getting_next_schedules(company_id, loanapp_id):
     try:
-        print('comp',company_id)
-        print('loan',loanapp_id)
         # Filter repayment schedules based on company and loan application
         instance = RepaymentSchedule.objects.filter(company_id=company_id, loan_id_id=loanapp_id, repayment_status='Pending')
-        print('instance',instance)
+    
         # Order by repayment date to find the earliest pending repayment
         next_due_schedule = instance.order_by('repayment_date').first()
 
@@ -1758,7 +1761,7 @@ def create_collaterals(company_id, loanapp_id, customer_id, collateral_type_id, 
     except Exception as e:
         return error(f"An error occurred: {e}")
 
-def upload_collateraldocument(company_id,loanapplication_id,document_name,attachment=None,desctioption=None):
+def upload_collateraldocument(company_id,collateral_id,loanapplication_id,document_name,attachment=None,desctioption=None):
     try:
         request = get_current_request()
         if not request.user.is_authenticated:
@@ -1766,9 +1769,11 @@ def upload_collateraldocument(company_id,loanapplication_id,document_name,attach
 
         Company.objects.get(pk=company_id)
         LoanApplication.objects.get(pk=loanapplication_id)
+        Collaterals.objects.get(pk=collateral_id)
 
         instance = CollateralDocuments.objects.create(
             company_id = company_id,
+            collateral_id = collateral_id,
             application_id_id = loanapplication_id,
             document_name = document_name,
             additional_documents = attachment,
@@ -1808,13 +1813,27 @@ def upload_collateraldocument(company_id,loanapplication_id,document_name,attach
     except Company.DoesNotExist:
         return error('Invalid Company ID: Company not found.')
     except LoanApplication.DoesNotExist:
-        return error('Invalid LoanApplication ID: LoanApplication not found.')   
+        return error('Invalid LoanApplication ID: LoanApplication not found.') 
+    except Collaterals.DoesNotExist:
+        return error('Invalid Collaterals ID: Collaterals not found.')   
     except Exception as e:
         return error(f"An error occurred: {e}")
 
-def view_collateraldocument(loan_application_id):
+def view_collateraldocument(company_id,collateral_id):
     try:
-        records = CollateralDocuments.objects.filter(application_id_id = loan_application_id)
+       
+        records = CollateralDocuments.objects.filter(company_id = company_id,collateral_id = collateral_id)
+        serializer = CollateralDocumentsSerializer(records, many=True).data
+        return success(serializer)
+    except LoanApplication.DoesNotExist:
+        return error('Invalid LoanApplication ID: LoanApplication not found.')
+    except Exception as e:
+        return error(f"An error occurred: {e}")
+
+def get_collateraldocument_withloanapp(company_id,loan_application_id):
+    try:
+       
+        records = CollateralDocuments.objects.filter(company_id = company_id,application_id_id = loan_application_id)
         serializer = CollateralDocumentsSerializer(records, many=True).data
         return success(serializer)
     except LoanApplication.DoesNotExist:
@@ -1872,6 +1891,21 @@ def update_collaterals(collaterals_id,company_id=None, collateral_id=None, loana
         return error(f"Validation Error: {e}")
     except Exception as e:
         return error(f"An error occurred: {e}")
+
+def view_collaterals_withdocuments(company_id,loan_appliaction_id):
+    try:
+        request = get_current_request()
+        if not request.user.is_authenticated:
+            return error('Login required')
+        
+        records = Collaterals.objects.filter(company_id =company_id, loanapp_id = loan_appliaction_id)
+        serializer = CollateralsSerializer(records, many=True).data
+        for data in serializer:
+            documents=CollateralDocuments.objects.filter(collateral_id=data.get('id'))
+            data['documents']=CollateralDocumentsSerializer(documents,many=True).data
+        return success(serializer)
+    except ValidationError as e:
+        return error(f"Validation Error: {e}")
 
 def view_collaterals(company_id,collaterals_id=None,customer_id = None,loan_appliaction_id = None):
     try:
