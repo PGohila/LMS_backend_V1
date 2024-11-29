@@ -875,6 +875,22 @@ def get_method(BASE_URL,END_POINT):
         return error(f"An error occurred: {e}")
 
 
+def get_account_number(account_category,loan_id,account_data):
+    print(f"Looking for account number with loan_id={loan_id} and category={account_category}")
+    
+    for account in account_data:
+        account_loan = str(account['loan']).strip()
+        account_category_value = account['account_category'].strip()
+
+        loan_id_str = str(loan_id).strip()
+        
+        print(f"Checking account: loan={account_loan}, category={account_category_value}, account_number={account['account_number']}")
+
+        if account_loan == loan_id_str and account_category_value == account_category:
+            print(f"Found matching account number: {account['account_number']}")
+            return account['account_number']
+
+
 
 def loan_approval(company_id,loanapp_id, approval_status = None,rejected_reason = None):
     BASE_URL = "https://bbaccountingtest.pythonanywhere.com/loan-setup/"
@@ -899,11 +915,35 @@ def loan_approval(company_id,loanapp_id, approval_status = None,rejected_reason 
                 
             
             loan_id = loan['data']
+            loans = Loan.objects.get(pk=loan_id)
+            END_POINT = "loan-account-create/"
+            data = {
+                    "loan_id": loans.loan_id,
+                    "loan_no": loans.loan_id,
+                    "description": "Create Loan Account"
+                }
+            response = post_method(data,BASE_URL,END_POINT)
+
+            END_POINT = f"loan-account-get/{loan_id}"
+            
+            response = get_method(BASE_URL,END_POINT)
+
+            account_data  = response
+            print('account_data--',account_data)
+
+            account_categories = {
+                "LoanAccount": "Loan", 
+                "LoanDisbursementAccount": "Loan Disbursement",  
+                "LoanRepaymentAccount": "Cash/Bank",  
+                "PenaltyAccount": "Penalty Fees/Income",  
+                "InterestAccount": "Interest Income",
+                "Milestones":'Milestones',
+            }
 
             # 1. Create Loan Account
-     
+            loan_account_number = get_account_number(account_categories["LoanAccount"],loan_id,account_data)
             loan_account = LoanAccount.objects.create(
-                account_no=f'LA00{loan_id}',
+                account_no=loan_account_number,
                 company_id=company_id,
                 loan_id=loan['data'],
                 principal_amount=0.0,
@@ -911,9 +951,9 @@ def loan_approval(company_id,loanapp_id, approval_status = None,rejected_reason 
             )
 
             # 2. Create Loan Disbursement Account
-
+            loan_disbursement_account_number = get_account_number(account_categories["LoanDisbursementAccount"],loan_id,account_data)
             loan_disbursement_account = LoanDisbursementAccount.objects.create(
-                account_no=f'DA00{loan_id}',
+                account_no= loan_disbursement_account_number,
                 company_id=company_id,
                 loan_id=loan['data'],
                 amount=0.0,
@@ -921,9 +961,9 @@ def loan_approval(company_id,loanapp_id, approval_status = None,rejected_reason 
             )
 
             # 3. Create Repayment Account
-    
+            loan_repayment_account_number = get_account_number(account_categories["LoanRepaymentAccount"],loan_id,account_data)
             loan_repayment_account = LoanRepaymentAccount.objects.create(
-                    account_no=f'RA00{loan_id}',
+                    account_no=loan_repayment_account_number,
                     company_id=company_id,
                     loan_id=loan['data'],
                     amount=0.0,  # Initial amount can be set to 0.00
@@ -931,9 +971,9 @@ def loan_approval(company_id,loanapp_id, approval_status = None,rejected_reason 
                 )
 
             # 4. Create Penalty Account (optional)
-
+            penalty_account_number = get_account_number(account_categories["PenaltyAccount"],loan_id,account_data)
             loan_penalty_account = PenaltyAccount.objects.create(
-                account_no = f'PA00{loan_id}',
+                account_no = penalty_account_number,
                 company_id=company_id,
                 loan_id=loan['data'],
                 penalty_amount=0.0,  # Initial penalty amount can be set to 0.00
@@ -941,16 +981,18 @@ def loan_approval(company_id,loanapp_id, approval_status = None,rejected_reason 
             )
 
             # 5. Create Interest Account (optional)
-
+            interest_account_number = get_account_number(account_categories["InterestAccount"],loan_id,account_data)
             loan_interest_account = InterestAccount.objects.create(
-                    account_no = f'IA00{loan_id}',
+                    account_no = interest_account_number,
                     company_id=company_id,
                     loan_id=loan['data'],
                     interest_accrued=0.0,  # Initial interest accrued can be set to 0.00
                 )
             
+            # 6. Milestone Account
+            milestone_account_number = get_account_number(account_categories["Milestones"],loan_id,account_data)
             loan_milestone_account = MilestoneAccount.objects.create(
-                    # account_no = f'IA00{loan_id}',
+                    account_no = milestone_account_number,
                     company_id=company_id,
                     loan_id=loan['data'],
                     milestone_cost=0.0,  # Initial milestone accrued can be set to 0.00

@@ -591,6 +591,7 @@ class InterestAccount(models.Model):
 # This tracks disbursements made to specific milestones if the loan is based on milestones.
 class MilestoneAccount(models.Model):
     company = models.ForeignKey(Company,on_delete=models.CASCADE, related_name='%(class)s_company')
+    account_no = models.CharField(max_length=50)
     loan = models.OneToOneField(Loan, on_delete=models.CASCADE, related_name="loan_detail1")
     milestone_header = models.ForeignKey('LoanValuechain', on_delete=models.CASCADE, blank=True,null=True)  # This is the value chain or scheme-based identifier
     milestone_cost = models.FloatField(default=0.0)
