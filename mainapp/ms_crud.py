@@ -2,7 +2,7 @@ import base64
 from pyexpat.errors import messages
 from django.core.exceptions import ValidationError
 import requests
-
+from user_management.service import send_alert_to_user
 from lms_backend import settings
 from mainapp.common import log_audit_trail
 from mainapp.dms import create_entity, create_folder_for_all_customer, document_upload_audit, document_upload_history, is_valid_current_datetime, unique_id_generate_doc
@@ -18,6 +18,7 @@ from .loan_calculation import *
 from django.shortcuts import get_object_or_404
 from django.utils.timezone import now
 def create_company(name,address,email,phone,registration_number,is_active=False, description = None,incorporation_date = None):
+    BASE_URL = "https://bbaccountingtest.pythonanywhere.com/"
     try:
         request = get_current_request()
         if not request.user.is_authenticated:
@@ -35,12 +36,39 @@ def create_company(name,address,email,phone,registration_number,is_active=False,
         )
         create_entity(entity_name=name,entity_type="loan")
 
+        END_POINT = "finance/company/"
+        data = {
+            "company_name":name,
+            "description":description,
+            "address" : address,
+            "email" : email,
+            "phone" : phone,
+            "website":f"https://www.{name}.in",
+            "incorporation_number" : registration_number,
+            "incorporation_date" : incorporation_date,
+            "number_of_branches":0,
+            "number_of_staffs":0,
+            "end_of_financial_year":"2024-12-12",
+            "end_of_month_date":"2024-12-12",
+            "amount_rounded_to":0,
+            "local_currency":"KSH-4897"
+        }
+        access_token = get_token()
+        response = post_method(data,BASE_URL,END_POINT,access_token)
+        record_id = response['record_id']
+        instance.reference_id = record_id
+        instance.save()
         # =============== create central funding account for company ===============
+
+        END_POINT = f"finance/get-company-account/{record_id}/"
+        response = get_company_account(BASE_URL,END_POINT,access_token)
+        account = response
+        expense_account = [account_data['account_number'] for account_data in account if str(account_data['account_type']) == 'Expense'][0]
         CentralFundingAccount.objects.create(
             company_id = instance.id,
             account_name = instance.name,
-            account_no = f"000{instance.id}",
-            account_type = 'investment',
+            account_no = expense_account,
+            account_type = 'Expense',
         )
 
         try:
@@ -55,6 +83,23 @@ def create_company(name,address,email,phone,registration_number,is_active=False,
     except Exception as e:
         print(f"An error occurred: {e}")
         return error(f"An error occurred: {e}")
+    
+def get_company_account(BASE_URL,END_POINT,access_token):
+    try:
+        url = BASE_URL+END_POINT
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {access_token}"  
+        }
+        response = requests.get(url, headers=headers)  
+        
+        return response.json()
+
+    except requests.exceptions.RequestException as e:
+        return error(f"Request error: {e}")  
+    except Exception as e:
+        return error(f"An error occurred: {e}")
+
 
 def update_company(company_id,address,email,phone,registration_number,name=None, description=None,incorporation_date=None, is_active=None):
     try:
@@ -130,8 +175,9 @@ def delete_company(company_id):
     except Exception as e:
         return error(f"An error occurred:{e}")
 
-def create_customer(company_id, firstname, lastname, email, phone_number, address, dateofbirth,age, customer_income, expiry_date, is_active):
+def create_customer(company_id, firstname, lastname, email, phone_number, address, dateofbirth,age, customer_income, expiry_date, is_active,category_type=None,category_name = None):
     """ ============== Customer Creation ==================="""
+    BASE_URL = "https://bbaccountingtest.pythonanywhere.com/"
     try:
         request = get_current_request()
         if not request.user.is_authenticated:
@@ -159,7 +205,8 @@ def create_customer(company_id, firstname, lastname, email, phone_number, addres
             dateofbirth = dateofbirth,
             age = age,
             customer_income = customer_income,
-         
+            category_type = category_type,
+            category_name = category_name,         
             expiry_date = expiry_date,
             is_active = is_active,
         )
@@ -167,10 +214,44 @@ def create_customer(company_id, firstname, lastname, email, phone_number, addres
       
         create_folder_for_all_customer(customer_id,company_id)
         #==================== createborrower Account ==================
+        END_POINT = "finance/user/"
+        company_data = Company.objects.get(id = company_id)
+        data = {
+            "password":firstname,
+            "first_name":firstname,
+            "middle_name" : None,
+            "last_name":lastname,
+            "email" : email,
+            "phone_number" : phone_number,
+            "company_name":company_data.reference_id     
+        }
+        access_token = get_token()
+        response = post_method(data,BASE_URL,END_POINT,access_token)
+    
+        END_POINT = "finance/common-registration/"
+        data = {
+            "name": f"{firstname} {lastname}",
+            "register_id": f"{customer_id}",
+            "register_as": "member",
+            "company": company_data.reference_id,
+            "category_type": instance.category_type,
+            "category_name": instance.category_name
+            }
+
+        response = post_method(data,BASE_URL,END_POINT,access_token)
+        print('response--member',response)
+        mem_id = response['record_id']
+
+        END_POINT = f"sacco-setup/get-account-list/{customer_id}/"
+        response = get_method(BASE_URL,END_POINT,access_token)
+        print('response--test',response)
+        account = response
+        account_details = [account_data['account_number'] for account_data in account if str(account_data['account_type']) == 'Expense'][0]
+
         CustomerAccount.objects.create(
             company_id = company_id,
             customer_id = customer_id,
-            account_number = f"B00{customer_id}",
+            account_number = account_details,
             bank_name = 'BB',
             branch_name = None,
             ifsc_code = None,  # For Indian banks, or SWIFT code for international banks
@@ -838,15 +919,26 @@ def loan_risk_assessment_detail(application_id):
         return error('Instance does not exist')
     except Exception as e:
         return error(f"An error occurred: {e}")
+def get_token():
+    url = 'https://bbaccountingtest.pythonanywhere.com/token/'
+    headers = {
+        "Content-Type": "application/json",  
+    }
+    data = {
+        "email": "admin@bharathbrands.in",
+        "password": "1234"
+    }
+    response = requests.post(url, headers=headers, json=data)
+    response_data = response.json()
+    access_token = response_data['access']
+    return access_token
 
-
-def post_method(data,BASE_URL,END_POINT):
+def post_method(data,BASE_URL,END_POINT,access_token):
     try:
-        print('data',data)
         url = BASE_URL+END_POINT
         headers = {
             "Content-Type": "application/json",
-            # "Authorization": f"Bearer {access_token}"  
+            "Authorization": f"Bearer {access_token}"  
         }
 
         response = requests.post(url, headers=headers, json=data)  
@@ -858,12 +950,12 @@ def post_method(data,BASE_URL,END_POINT):
     except Exception as e:
         return error(f"An error occurred: {e}")
 
-def get_method(BASE_URL,END_POINT):
+def get_method(BASE_URL,END_POINT,access_token):
     try:      
         url = BASE_URL+END_POINT
         headers = {
             "Content-Type": "application/json",
-            # "Authorization": f"Bearer {access_token}"  
+            "Authorization": f"Bearer {access_token}"  
         }
         response = requests.get(url, headers=headers)  
         
@@ -916,18 +1008,18 @@ def loan_approval(company_id,loanapp_id, approval_status = None,rejected_reason 
             
             loan_id = loan['data']
             loans = Loan.objects.get(pk=loan_id)
+            print("loans.loan_id",loans.loan_id)
             END_POINT = "loan-account-create/"
             data = {
                     "loan_id": loans.loan_id,
                     "loan_no": loans.loan_id,
                     "description": "Create Loan Account"
                 }
-            response = post_method(data,BASE_URL,END_POINT)
+            access_token = get_token()
+            response = post_method(data,BASE_URL,END_POINT,access_token)
 
-            END_POINT = f"loan-account-get/{loan_id}"
-            
-            response = get_method(BASE_URL,END_POINT)
-
+            END_POINT = f"loan-account-get/{loans.loan_id}"
+            response = get_method(BASE_URL,END_POINT,access_token)
             account_data  = response
             print('account_data--',account_data)
 
@@ -941,7 +1033,8 @@ def loan_approval(company_id,loanapp_id, approval_status = None,rejected_reason 
             }
 
             # 1. Create Loan Account
-            loan_account_number = get_account_number(account_categories["LoanAccount"],loan_id,account_data)
+            loan_account_number = get_account_number(account_categories["LoanAccount"],loans.loan_id,account_data)
+            print('loan_account_number',loan_account_number)
             loan_account = LoanAccount.objects.create(
                 account_no=loan_account_number,
                 company_id=company_id,
@@ -951,7 +1044,7 @@ def loan_approval(company_id,loanapp_id, approval_status = None,rejected_reason 
             )
 
             # 2. Create Loan Disbursement Account
-            loan_disbursement_account_number = get_account_number(account_categories["LoanDisbursementAccount"],loan_id,account_data)
+            loan_disbursement_account_number = get_account_number(account_categories["LoanDisbursementAccount"],loans.loan_id,account_data)
             loan_disbursement_account = LoanDisbursementAccount.objects.create(
                 account_no= loan_disbursement_account_number,
                 company_id=company_id,
@@ -961,7 +1054,7 @@ def loan_approval(company_id,loanapp_id, approval_status = None,rejected_reason 
             )
 
             # 3. Create Repayment Account
-            loan_repayment_account_number = get_account_number(account_categories["LoanRepaymentAccount"],loan_id,account_data)
+            loan_repayment_account_number = get_account_number(account_categories["LoanRepaymentAccount"],loans.loan_id,account_data)
             loan_repayment_account = LoanRepaymentAccount.objects.create(
                     account_no=loan_repayment_account_number,
                     company_id=company_id,
@@ -971,7 +1064,7 @@ def loan_approval(company_id,loanapp_id, approval_status = None,rejected_reason 
                 )
 
             # 4. Create Penalty Account (optional)
-            penalty_account_number = get_account_number(account_categories["PenaltyAccount"],loan_id,account_data)
+            penalty_account_number = get_account_number(account_categories["PenaltyAccount"],loans.loan_id,account_data)
             loan_penalty_account = PenaltyAccount.objects.create(
                 account_no = penalty_account_number,
                 company_id=company_id,
@@ -981,7 +1074,7 @@ def loan_approval(company_id,loanapp_id, approval_status = None,rejected_reason 
             )
 
             # 5. Create Interest Account (optional)
-            interest_account_number = get_account_number(account_categories["InterestAccount"],loan_id,account_data)
+            interest_account_number = get_account_number(account_categories["InterestAccount"],loans.loan_id,account_data)
             loan_interest_account = InterestAccount.objects.create(
                     account_no = interest_account_number,
                     company_id=company_id,
@@ -990,7 +1083,7 @@ def loan_approval(company_id,loanapp_id, approval_status = None,rejected_reason 
                 )
             
             # 6. Milestone Account
-            milestone_account_number = get_account_number(account_categories["Milestones"],loan_id,account_data)
+            milestone_account_number = get_account_number(account_categories["Milestones"],loans.loan_id,account_data)
             loan_milestone_account = MilestoneAccount.objects.create(
                     account_no = milestone_account_number,
                     company_id=company_id,
@@ -1041,6 +1134,7 @@ def loan_approval(company_id,loanapp_id, approval_status = None,rejected_reason 
         else:
             instance.application_status = "Submitted"
         instance.save()
+        send_alert_to_user()
         return success("Successfully Approved Your Application")
     except LoanApplication.DoesNotExist:
         return error('Instance does not exist')

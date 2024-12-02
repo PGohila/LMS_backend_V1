@@ -1,7 +1,9 @@
 import json
 import random
+import re
 from django.core.exceptions import ValidationError
 from django.apps import apps
+from django.shortcuts import get_object_or_404
 from .models import *
 from .serializers import *
 from mainapp.middleware import get_current_request
@@ -535,3 +537,100 @@ def send_alert_to_user(name,channel_id,template_id,message,recipient):
         return success(f"Failed to send alter. Status Code: {response.status_code}, Response: {response.text}")
 
 
+
+
+# def create_template(template_name,content,company_id):
+#     # if request.method == 'POST':
+#     #     form = TemplateForm(request.POST)
+        
+#         last_order = Template.objects.last()
+#         last_order_id = last_order.template_id if last_order else None  # Use None if no templates exist
+        
+#         new_order_id = unique_id('TMP', last_order_id)
+
+#         instance = Template.objects.create(
+#             template_name = template_name,
+#             content = content,
+#             company_id = company_id
+#         )
+
+#         instance.template_id = new_order_id
+#         instance.save()
+        
+#         return success(instance.template_id)  # Redirect after successful creation
+#     # else:
+#     #     form = TemplateForm()
+
+#     # return render(request, 'template/template_create.html', {'form': form})
+
+# def template_view(request):
+#     templates = Template.objects.filter(company_id=request.user.USER_COMPANY.id)
+#     return success(templates)
+
+#     # return render(request, 'template/template_view.html',{'templates': templates,'template_active':True})
+
+
+# def template_type_edit(id,template_name,content):
+#     template = get_object_or_404(Template, template_id=id)
+
+
+#     template.template_name = template_name  
+#     template.content = content  
+#     template.save() 
+#     return success('Template updated successfully.')
+#     # return redirect('template_view')  # Redirect to a page after successful update
+#     # else:
+#     #     # Populate the form with existing data
+#     #     form = TemplateForm(instance=template)
+
+#     # return render(request, 'template/template_edit.html', {
+#     #     'form': form,
+#     #     'template': template,
+#     # })
+
+
+# def template_delete(id):
+#     template = Template.objects.get(template_id=id)
+#     template.delete()
+#     return success('Template deleted successfully.')
+#     # return redirect("template_view")
+
+# def template_type_view(id):
+#     template = get_object_or_404(Template, template_id=id)
+#     # templates = Template.objects.filter(template_id=pk,company_id=request.user.USER_COMPANY.id)
+
+#     # Find all placeholders in the template content for initial form rendering
+#     placeholders = [placeholder.strip() for placeholder in re.findall(r'\{\{(\s*\w+\s*)\}\}', template.content)]
+
+#     # Initialize filled_content as the template content
+#     filled_content = template.content
+
+#     # if request.method == 'POST':
+#         # Find all placeholders in the template content
+#         placeholders = re.findall(r'\{\{(\s*\w+\s*)\}\}', filled_content)
+
+#         # Replace placeholders with values from POST data
+#         for placeholder in placeholders:
+#             placeholder_value = request.POST.get(placeholder.strip(), '')  # Get value for placeholder
+#             filled_content = filled_content.replace(f'{{{{{placeholder}}}}}', re.escape(placeholder_value))  # Replace and escape content
+
+#         # Include the template name in the filled content as well
+#         filled_content = filled_content.replace('{{ template_name }}', re.escape(template.template_name))
+
+#         data = {
+#             'filled_content': filled_content,
+#              'template': template,
+#              'placeholders': [],
+#         }
+#         # return render(request, 'template/template_type_view.html', {
+#         #     'filled_content': filled_content,
+#         #     'template': template,
+#         #     'placeholders': [],  # No placeholders in the form after submission
+#         # })
+
+#     # Render the initial form with placeholders
+#     return ( 'template/template_type_view.html', {
+#         'template': template,
+#         'placeholders': placeholders,
+#         'previous_data': {placeholder: '' for placeholder in placeholders}  # Initialize with empty strings for GET request
+#     })

@@ -49,6 +49,7 @@ class Company(models.Model):
     phone = models.CharField(max_length=20)
     registration_number = models.CharField(max_length=100)
     incorporation_date = models.DateField(blank=True,null=True)
+    reference_id = models.CharField(max_length=50,blank=True,null=True)
     description = models.TextField(null=True, blank=True)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -151,6 +152,8 @@ class Customer(models.Model):
     age = models.IntegerField()
     phone_number = models.CharField(max_length=15)
     address = models.TextField()
+    category_type = models.CharField(max_length=50,blank=True,null=True)
+    category_name = models.CharField(max_length=50,blank=True,null=True)
     dateofbirth = models.DateField()
     customer_income = models.FloatField(default = 0.0) # monthly income
     credit_score = models.IntegerField(default=651)

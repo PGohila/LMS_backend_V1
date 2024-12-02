@@ -98,6 +98,31 @@ class OTP(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     status = models.CharField(max_length=10, default='UNUSED') 
 
+from djangocms_text_ckeditor.fields import RichTextField
+from mainapp.models import Company
+
+
+
+# class Template(models.Model):
+#     CHOICES = [
+#         ('SMS', 'SMS'),
+#         ('EMAIL', 'EMAIL'),
+#         ('WHATSAPP', 'WHATSAPP'),
+#         ('PRINTER', 'PRINTER'),
+#     ]
+#     template_id = models.CharField(max_length=100,null=True, blank=True)
+#     template_name = models.CharField(max_length=20, choices=CHOICES)
+#     content = RichTextField()
+#     company = models.ForeignKey(Company,on_delete=models.CASCADE, related_name="template_company_created_by", blank=True, null=True)
+#     created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name="template_created_by", blank=True, null=True) 
+#     updated_by = models.ForeignKey(User, on_delete=models.CASCADE, blank=True, null=True, related_name="template_updated_by") 
+#     created_at = models.DateTimeField(auto_now_add=True)  
+#     updated_at = models.DateTimeField(auto_now=True)  
+
+#     def __str__(self):
+#         return self.template_name
+
+
     # expired_at = models.DateTimeField()
     
     # def is_expired(self):
