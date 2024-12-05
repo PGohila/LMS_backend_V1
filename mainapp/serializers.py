@@ -306,3 +306,13 @@ class LoanMilestoneSerializer(serializers.ModelSerializer):
     class Meta:
         model = LoanMilestone
         fields = '__all__'
+
+class altertemplateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Alert_Template
+        fields = '__all__'
+
+class TemplateMapSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TemplateMap
+        fields = '__all__'

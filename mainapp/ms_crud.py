@@ -239,7 +239,7 @@ def create_customer(company_id, firstname, lastname, email, phone_number, addres
             }
 
         response = post_method(data,BASE_URL,END_POINT,access_token)
-        print('response--member',response)
+        print('response--member',response,customer_id)
         mem_id = response['record_id']
 
         END_POINT = f"sacco-setup/get-account-list/{customer_id}/"
@@ -669,6 +669,15 @@ def create_loanapplication(company_id, customer_id, loan_amount,loantype_id, loa
             log_audit_trail(request.user.id,'Loan Application Registration', instance, 'Create', 'Object Created.')
         except Exception as e:
             return error(f"An error occurred: {e}")
+        
+
+        customer_data = Customer.objects.get(customer_id = instance.customer_id)
+        alert = TemplateMap.objects.filter(template_name = "Loan Approval")
+        for alert_mode in alert:
+            tags_and_values = template_fields_for_alert(instance.pk,alert_mode.template_id)
+            data = {item['name']: str(item['value']) for item in tags_and_values['data']}
+            alert_response = send_alert_to_user(data,alert_mode.template_type,alert_mode.template.reference_id,customer_data.email)
+            print('alert_response',alert_response)
 
 
         return success(f'Successfully created {instance}')
@@ -1125,7 +1134,6 @@ def loan_approval(company_id,loanapp_id, approval_status = None,rejected_reason 
                     interest_amount = float(data['Interest']),
                     remaining_balance = float(data['Closing_Balance']),
                 )
-            
             if loan['status_code'] == 1:
                 return error(f"An error occurred: {loan['data']}")
         elif approval_status == "Rejected":
@@ -1134,7 +1142,15 @@ def loan_approval(company_id,loanapp_id, approval_status = None,rejected_reason 
         else:
             instance.application_status = "Submitted"
         instance.save()
-        send_alert_to_user()
+
+        customer_data = Customer.objects.get(customer_id = instance.customer_id)
+        alert = TemplateMap.objects.filter(template_name = "Loan Approval")
+        for alert_mode in alert:
+            tags_and_values = template_fields_for_alert(instance.pk,alert_mode.template_id)
+            data = {item['name']: str(item['value']) for item in tags_and_values['data']}
+            alert_response = send_alert_to_user(data,alert_mode.template_type,alert_mode.template.reference_id,customer_data.email)
+            print('alert_response',alert_response)
+
         return success("Successfully Approved Your Application")
     except LoanApplication.DoesNotExist:
         return error('Instance does not exist')
@@ -5230,3 +5246,248 @@ def view_loan_for_dashboard(company_id):
         # Return an error response with the exception message
         return error(f"An error occurred: {e}")
 
+def unique_temp_id(pre, last_id):
+
+    today1=date.today()
+    today = today1.strftime("%d%m%y")
+
+    last_ids = int(last_id) + 1
+    if len(str(last_ids)) == 1:
+        id = pre + today + '00' + str(last_ids)
+    elif len(str(last_ids)) == 2:
+        id = pre + today + '0' + str(last_ids)
+    else:
+        id = pre + today + str(last_ids)
+    return id
+
+
+def create_template(template_name,content):
+    try:
+        last_order = Alert_Template.objects.last()
+        last_order_id = last_order.id if last_order else '0'  # Use None if no templates exist
+        
+        new_order_id = unique_temp_id('TMP', last_order_id)
+
+        instance = Alert_Template.objects.create(
+            template_name = template_name,
+            content = content,
+
+        )
+
+        instance.template_id = new_order_id
+        instance.save()
+        
+        return success(instance.template_id)  # Redirect after successful creation
+    except Exception as e:
+        # Return an error response with the exception message
+        return error(f"An error occurred: {e}")
+
+def template_view():
+    try:     
+        templates = Alert_Template.objects.all()
+        serializer = altertemplateSerializer(templates, many = True).data
+        return success(serializer)
+    except Exception as e:
+        # Return an error response with the exception message
+        return error(f"An error occurred: {e}")
+
+    
+
+
+def get_template(id):
+    try: 
+        template = get_object_or_404(Alert_Template, id=id)
+        serializer = altertemplateSerializer(template).data
+        return success(serializer)
+    except Exception as e:
+        # Return an error response with the exception message
+        return error(f"An error occurred: {e}")
+
+
+def template_edit(id,template_name,content):
+    try:  
+        template = get_object_or_404(Alert_Template, id=id)
+
+        template.template_name = template_name  
+        template.content = content  
+        template.save() 
+        return success('Template updated successfully.')
+    except Exception as e:
+        # Return an error response with the exception message
+        return error(f"An error occurred: {e}")
+
+def template_delete(id):
+    try:   
+        template = Alert_Template.objects.get(id=id)
+        template.delete()
+        return success('Template deleted successfully.')
+    except Exception as e:
+        # Return an error response with the exception message
+        return error(f"An error occurred: {e}")
+
+# For Template Mapping
+
+def templatemap_create(template_name,template_type,template):
+    try:
+        instance = TemplateMap.objects.create(
+            template_name = template_name,
+            template_type = template_type,
+            template_id = template,   
+        )
+        return success(instance.template_name)  # Redirect after successful creation
+    except Exception as e:
+        # Return an error response with the exception message
+        return error(f"An error occurred: {e}")
+
+def templatemap_view():
+    try:     
+        templates = TemplateMap.objects.all()
+        serializer = TemplateMapSerializer(templates, many = True).data
+        return success(serializer)
+    except Exception as e:
+        # Return an error response with the exception message
+        return error(f"An error occurred: {e}")
+def get_templatemap(id):
+    try: 
+        template = get_object_or_404(TemplateMap, id=id)
+        serializer = TemplateMapSerializer(template).data
+        return success(serializer)
+    except Exception as e:
+        # Return an error response with the exception message
+        return error(f"An error occurred: {e}")
+def templateMap_edit(id,template_name,template_type,template):
+    try:  
+        template = get_object_or_404(TemplateMap, id=id)
+
+        template_name = template_name,
+        template_type = template_type,
+        template = template, 
+        template.save() 
+        return success('Template updated successfully.')
+    except Exception as e:
+        # Return an error response with the exception message
+        return error(f"An error occurred: {e}")
+def templateMap_delete(id):
+    try:   
+        template = TemplateMap.objects.get(id=id)
+        template.delete()
+        return success('Template deleted successfully.')
+    except Exception as e:
+        # Return an error response with the exception message
+        return error(f"An error occurred: {e}")
+
+import re
+from django.utils.html import escape
+
+def template_fields_for_alert(loanapplication_pk,template_id):
+    print("enter ---",loanapplication_pk,template_id)
+    try:
+        template = Alert_Template.objects.get(pk=template_id)
+        # loan = Loan.objects.filter(loanapp_id_id=loan_id)
+        
+        # Find all placeholders in the template content for initial form rendering
+        placeholders = [placeholder.strip() for placeholder in re.findall(r'\{\{(\s*\w+\s*)\}\}', template.content)]
+        placeholders_with_value = tag_replacement(placeholders, loanapplication_pk)
+        return success(placeholders_with_value)
+
+    except TemplateMap.DoesNotExist:
+        return error(f"Template with ID {template_id} not found")
+    except Exception as e:
+        return error(e)
+    
+
+def tag_replacement(tag_list, loanapplication_pk):
+    loan = LoanApplication.objects.filter(pk=loanapplication_pk)
+    print('loan11',loan)
+    print('loan12',loan)
+    loan=loan.last()
+    result = []
+    
+    for data in tag_list:
+        dic = {'name': data, 'value': None}  # Initialize the dictionary
+        print('loan.customer',loan.customer_id)
+        if data == 'customer_first_name' or data == 'cutomer_first_name':
+            dic['value'] = loan.customer_id.firstname
+        elif data == 'customer_lastname' or data == 'cutomer_lastname':
+            dic['value'] = loan.customer_id.lastname
+        elif data == 'customer_email' or data == 'cutomer_email':
+            dic['value'] = loan.customer_id.email
+        elif data == 'customer_age' or data == 'cutomer_age':
+            dic['value'] = loan.customer_id.age
+        elif data == 'customer_phone_number' or data == 'cutomer_phone_number':
+            dic['value'] = loan.customer_id.phone_number
+        elif data == 'customer_address' or data == 'cutomer_address':
+            dic['value'] = loan.customer_id.address
+        elif data == 'dateofbirth':
+            dic['value'] = loan.customer_id.dateofbirth
+        elif data == 'application_id':
+            dic['value'] = loan.application_id
+        elif data == 'loan_type':
+            dic['value'] = loan.loantype.loantype
+        elif data == 'loan_amount':
+            dic['value'] = loan.loan_amount
+        elif data == 'loan_purpose':
+            dic['value'] = loan.loan_purpose
+        elif data == 'approved_amount':
+            dic['value'] = loan.approved_amount
+        elif data == 'interest_rate':
+            dic['value'] = loan.interest_rate
+        elif data == 'tenure':
+            dic['value'] = loan.tenure
+        elif data == 'tenure_type':
+            dic['value'] = loan.tenure_type
+        elif data == 'repayment_schedule':
+            dic['value'] = loan.repayment_schedule
+        elif data == 'repayment_mode':
+            dic['value'] = loan.repayment_mode
+        elif data == 'interest_basics':
+            dic['value'] = loan.interest_basics
+        elif data == 'loan_calculation_method':
+            dic['value'] = loan.loan_calculation_method
+        
+        result.append(dic)
+    print('result_for_template_fields',result)
+    return result
+
+
+
+
+# def template_type_view(id):
+#     template = get_object_or_404(Template, template_id=id)
+#     # templates = Template.objects.filter(template_id=pk,company_id=request.user.USER_COMPANY.id)
+
+#     # Find all placeholders in the template content for initial form rendering
+#     placeholders = [placeholder.strip() for placeholder in re.findall(r'\{\{(\s*\w+\s*)\}\}', template.content)]
+
+#     # Initialize filled_content as the template content
+#     filled_content = template.content
+
+#     # if request.method == 'POST':
+#         # Find all placeholders in the template content
+#         placeholders = re.findall(r'\{\{(\s*\w+\s*)\}\}', filled_content)
+
+#         # Replace placeholders with values from POST data
+#         for placeholder in placeholders:
+#             placeholder_value = request.POST.get(placeholder.strip(), '')  # Get value for placeholder
+#             filled_content = filled_content.replace(f'{{{{{placeholder}}}}}', re.escape(placeholder_value))  # Replace and escape content
+
+#         # Include the template name in the filled content as well
+#         filled_content = filled_content.replace('{{ template_name }}', re.escape(template.template_name))
+
+#         data = {
+#             'filled_content': filled_content,
+#              'template': template,
+#              'placeholders': [],
+#         }
+#         # return render(request, 'template/template_type_view.html', {
+#         #     'filled_content': filled_content,
+#         #     'template': template,
+#         #     'placeholders': [],  # No placeholders in the form after submission
+#         # })
+
+#     # Render the initial form with placeholders
+#     return ( 'template/template_type_view.html', {
+#         'template': template,
+#         'placeholders': placeholders,
+#         'previous_data': {placeholder: '' for placeholder in placeholders}  # Initialize with empty strings for GET request
+#     })

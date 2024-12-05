@@ -4,6 +4,7 @@ from django.contrib.auth.models import User
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from user_management.models import *
+from ckeditor.fields import RichTextField
 
 # MS setup models
 class MSRegistration(models.Model):
@@ -1042,4 +1043,38 @@ class Template(models.Model):
     updated_by = models.ForeignKey(User, related_name='Template_updated_by', on_delete=models.SET_NULL,null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+
+
+
+class Alert_Template(models.Model):
+    CHOICES = [
+        ('SMS', 'SMS'),
+        ('EMAIL', 'EMAIL'),
+        ('WHATSAPP', 'WHATSAPP'),
+        ('PRINTER', 'PRINTER'),
+    ]
+    
+    template_id = models.CharField(max_length=100,null=True, blank=True)
+    template_name = models.CharField(max_length=20, choices=CHOICES)
+    content = RichTextField()
+    reference_id = models.CharField(max_length=50, blank=True,null=True)
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name="template_created_by", blank=True, null=True) 
+    updated_by = models.ForeignKey(User, on_delete=models.CASCADE, blank=True, null=True, related_name="template_updated_by") 
+    created_at = models.DateTimeField(auto_now_add=True)  
+    updated_at = models.DateTimeField(auto_now=True)  
+
+    def __str__(self):
+        return self.template_id
+
+
+class TemplateMap(models.Model):
+    CHOICES = [
+        ('Loan Approval', 'Loan Approval'),
+        ('Application submit', 'Application submit'),
+    ] 
+    
+    template_name = models.CharField(max_length=20, choices=CHOICES)
+    template_type = models.CharField(max_length=20)
+    template = models.ForeignKey(Alert_Template,on_delete = models.CASCADE)
 

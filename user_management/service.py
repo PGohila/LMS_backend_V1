@@ -10,7 +10,7 @@ from mainapp.middleware import get_current_request
 from mainapp.scripts import *
 from django.db.models import Q
 from django.contrib.auth.hashers import make_password,check_password
-from lms_backend.settings import EMAIL,PASSWORD
+from lms_backend.settings import EMAIL,PASSWORD,COMPANY_ID
 
 import uuid
 
@@ -114,11 +114,7 @@ def user_registration(first_name, last_name, email, phone_number, password,user_
             # maker=maker,
             # checker=checker
         )
-        name = "Mathan"
-        channel_id =2
-        template_id = "TMP25112404233807"	
-        message = "User Created Successfully"
-        recipient = "+919042757290"
+        
         return success(f'Successfully created {instance} ')
     
     except User.DoesNotExist:
@@ -489,6 +485,7 @@ def send_otp_to_user( otp_code):
     # Prepare the request data
     payload = {
         "channel_id": 1,
+        "company_id":COMPANY_ID,
         "template_id": "TMP22112407355106",
         "recipient_list": [user.email],  
         "task_data": {
@@ -508,129 +505,25 @@ def send_otp_to_user( otp_code):
     else:
         return success(f"Failed to send OTP. Status Code: {response.status_code}, Response: {response.text}")
 
-def send_alert_to_user(name,channel_id,template_id,message,recipient):
-    request = get_current_request()
-    if not request.user.is_authenticated:
-        return error('Login required')
-    user = request.user
+def send_alert_to_user(data,channel_id,template_id,recipient):
     access_token = get_access_token()
 
     url = "https://genericdelivery.pythonanywhere.com/templatemanage/api/message/"
     
     payload = {
-        "channel_id": channel_id,
+        "channel_id": 1,
+        # "company_id":COMPANY_ID,
         "template_id": template_id,
         "recipient_list": [recipient],  
-        "task_data": {
-            "message": message,
-            "name":name 
-        }
+        "task_data": data
     }
     headers = {
         "Content-Type": "application/json",
         "Authorization": f"Bearer {access_token}"  
     }
     response = requests.post(url, json=payload, headers=headers)
-    if response.status_code == 200:
-        return success("Alter sent successfully!")
+    if response.status_code == 201:
+        return success("Alert sent successfully!")
     else:
         return success(f"Failed to send alter. Status Code: {response.status_code}, Response: {response.text}")
 
-
-
-
-# def create_template(template_name,content,company_id):
-#     # if request.method == 'POST':
-#     #     form = TemplateForm(request.POST)
-        
-#         last_order = Template.objects.last()
-#         last_order_id = last_order.template_id if last_order else None  # Use None if no templates exist
-        
-#         new_order_id = unique_id('TMP', last_order_id)
-
-#         instance = Template.objects.create(
-#             template_name = template_name,
-#             content = content,
-#             company_id = company_id
-#         )
-
-#         instance.template_id = new_order_id
-#         instance.save()
-        
-#         return success(instance.template_id)  # Redirect after successful creation
-#     # else:
-#     #     form = TemplateForm()
-
-#     # return render(request, 'template/template_create.html', {'form': form})
-
-# def template_view(request):
-#     templates = Template.objects.filter(company_id=request.user.USER_COMPANY.id)
-#     return success(templates)
-
-#     # return render(request, 'template/template_view.html',{'templates': templates,'template_active':True})
-
-
-# def template_type_edit(id,template_name,content):
-#     template = get_object_or_404(Template, template_id=id)
-
-
-#     template.template_name = template_name  
-#     template.content = content  
-#     template.save() 
-#     return success('Template updated successfully.')
-#     # return redirect('template_view')  # Redirect to a page after successful update
-#     # else:
-#     #     # Populate the form with existing data
-#     #     form = TemplateForm(instance=template)
-
-#     # return render(request, 'template/template_edit.html', {
-#     #     'form': form,
-#     #     'template': template,
-#     # })
-
-
-# def template_delete(id):
-#     template = Template.objects.get(template_id=id)
-#     template.delete()
-#     return success('Template deleted successfully.')
-#     # return redirect("template_view")
-
-# def template_type_view(id):
-#     template = get_object_or_404(Template, template_id=id)
-#     # templates = Template.objects.filter(template_id=pk,company_id=request.user.USER_COMPANY.id)
-
-#     # Find all placeholders in the template content for initial form rendering
-#     placeholders = [placeholder.strip() for placeholder in re.findall(r'\{\{(\s*\w+\s*)\}\}', template.content)]
-
-#     # Initialize filled_content as the template content
-#     filled_content = template.content
-
-#     # if request.method == 'POST':
-#         # Find all placeholders in the template content
-#         placeholders = re.findall(r'\{\{(\s*\w+\s*)\}\}', filled_content)
-
-#         # Replace placeholders with values from POST data
-#         for placeholder in placeholders:
-#             placeholder_value = request.POST.get(placeholder.strip(), '')  # Get value for placeholder
-#             filled_content = filled_content.replace(f'{{{{{placeholder}}}}}', re.escape(placeholder_value))  # Replace and escape content
-
-#         # Include the template name in the filled content as well
-#         filled_content = filled_content.replace('{{ template_name }}', re.escape(template.template_name))
-
-#         data = {
-#             'filled_content': filled_content,
-#              'template': template,
-#              'placeholders': [],
-#         }
-#         # return render(request, 'template/template_type_view.html', {
-#         #     'filled_content': filled_content,
-#         #     'template': template,
-#         #     'placeholders': [],  # No placeholders in the form after submission
-#         # })
-
-#     # Render the initial form with placeholders
-#     return ( 'template/template_type_view.html', {
-#         'template': template,
-#         'placeholders': placeholders,
-#         'previous_data': {placeholder: '' for placeholder in placeholders}  # Initialize with empty strings for GET request
-#     })

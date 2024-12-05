@@ -46,7 +46,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'djangocms_text_ckeditor',
+    
 ]
 
 MIDDLEWARE = [
@@ -191,3 +191,4 @@ AUTH_USER_MODEL = 'user_management.User'
 
 EMAIL = "technical@bharatbhrands.in"
 PASSWORD = "1234" 
+COMPANY_ID = 1
