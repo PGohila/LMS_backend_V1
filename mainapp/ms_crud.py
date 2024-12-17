@@ -2512,7 +2512,7 @@ def delete_customer_feedback(feedback_id):
 
 
 
-def calculate_repayment_schedule(loan_amount, interest_rate, tenure, tenure_type, repayment_schedule, loan_calculation_method, repayment_start_date, repayment_mode):
+def calculate_repayment_schedule(loan_amount, interest_rate, tenure, tenure_type, repayment_schedule, loan_calculation_method, repayment_start_date, repayment_mode,loantype_id):
     """
     Main function to execute the repayment calculations based on the selected method.
     
@@ -2660,7 +2660,7 @@ def delete_identificationtype(identificationtype_id):
         return error(f"An error occurred: {e}")
 
 
-def create_loantype(company_id,loantype,disbursement_beneficiary=None,interest_rate=None,loan_teams=None,min_loan_amt=None,max_loan_amt=None,eligibility=None,collateral_required=False,charges=None,is_active=False,description = None ):
+def create_loantype(company_id,loantype,disbursement_beneficiary=None,interest_rate=None,loan_calculation_method=None,loan_teams=None,min_loan_amt=None,max_loan_amt=None,eligibility=None,collateral_required=False,charges=None,is_active=False,description = None ):
     try:
         request = get_current_request()
         if not request.user.is_authenticated:
@@ -2682,6 +2682,7 @@ def create_loantype(company_id,loantype,disbursement_beneficiary=None,interest_r
             loantype = loantype, # personal loan, housing loan
             description = description,
             interest_rate = interest_rate, # percentage
+            loan_calculation_method=loan_calculation_method,
             loan_teams = loan_teams, # Standard loan term duration for this type, in months.
             min_loan_amt = min_loan_amt,
             max_loan_amt = max_loan_amt,
@@ -2704,7 +2705,7 @@ def create_loantype(company_id,loantype,disbursement_beneficiary=None,interest_r
     except Exception as e:
         return error(f"An error occurred: {e}")
 
-def update_loantype(company_id,loantype_id,loantype,disbursement_beneficiary=None,interest_rate=None,loan_teams=None,min_loan_amt=None,max_loan_amt=None,eligibility=None,collateral_required=False,charges=None,is_active=False,description = None ):
+def update_loantype(company_id,loantype_id,loantype,disbursement_beneficiary=None,interest_rate=None,loan_calculation_method=None,loan_teams=None,min_loan_amt=None,max_loan_amt=None,eligibility=None,collateral_required=False,charges=None,is_active=False,description = None ):
     try:
         request = get_current_request()
         if not request.user.is_authenticated:
@@ -2720,6 +2721,7 @@ def update_loantype(company_id,loantype_id,loantype,disbursement_beneficiary=Non
         instance.disbursement_beneficiary = disbursement_beneficiary if disbursement_beneficiary is not None else instance.disbursement_beneficiary
         instance.description = description if description is not None else instance.description
         instance.interest_rate = interest_rate if interest_rate is not None else instance.interest_rate
+        instance.loan_calculation_method = loan_calculation_method if loan_calculation_method is not None else instance.loan_calculation_method
         instance.loan_teams = loan_teams if loan_teams is not None else instance.loan_teams
         instance.min_loan_amt = min_loan_amt if min_loan_amt is not None else instance.min_loan_amt
         instance.max_loan_amt = max_loan_amt if max_loan_amt is not None else instance.max_loan_amt
@@ -2786,7 +2788,15 @@ def delete_loantype(loantype_id):
         return error(f"An error occurred: {e}")
     
 
+from django.http import JsonResponse
 
+def get_loan_type_details(id): 
+    try:
+        instance = LoanType.objects.get(id = id)
+        serializer = LoanTypeSerializer(instance)
+        return success(serializer.data) 
+    except Exception as e:
+        return error(f"An error occurred: {e}")
 
 def create_collateraltype(company_id,name, description,category):
     try:
