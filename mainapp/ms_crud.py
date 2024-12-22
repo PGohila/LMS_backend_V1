@@ -583,7 +583,6 @@ def create_loanapplication(company_id, customer_id, loan_amount,loantype_id, loa
             workflow_stats = "Submitted",
             is_active = True,
         )
-
         try:
             log_audit_trail(request.user.id,'Loan Application Registration', instance, 'Create', 'Object Created.')
         except Exception as e:
@@ -658,7 +657,6 @@ def view_loanapplication(loanapplication_id=None,company_id = None):
         request = get_current_request()
         if not request.user.is_authenticated:
             return error('Login required')
-        
         if loanapplication_id is not None:
             record = LoanApplication.objects.get(pk=loanapplication_id)
             serializer = LoanapplicationSerializer(record)
@@ -876,7 +874,7 @@ def get_method(BASE_URL,END_POINT):
 
 
 
-def loan_approval(company_id,loanapp_id, approval_status = None,rejected_reason = None):
+def loan_approval(company_id,loanapp_id, approval_status = None,rejected_reason = None,loantype_id=None):
     BASE_URL = "https://bbaccountingtest.pythonanywhere.com/loan-setup/"
     
     try:
@@ -910,6 +908,7 @@ def loan_approval(company_id,loanapp_id, approval_status = None,rejected_reason 
                 outstanding_balance=instance.loan_amount,
             )
 
+            print('loan acc created')
             # 2. Create Loan Disbursement Account
 
             loan_disbursement_account = LoanDisbursementAccount.objects.create(
@@ -919,6 +918,7 @@ def loan_approval(company_id,loanapp_id, approval_status = None,rejected_reason 
                 amount=0.0,
                 loan_account=loan_account,
             )
+            print('loan disbursement created')
 
             # 3. Create Repayment Account
     
@@ -929,6 +929,8 @@ def loan_approval(company_id,loanapp_id, approval_status = None,rejected_reason 
                     amount=0.0,  # Initial amount can be set to 0.00
                     payment_method='bank_transfer',  # Default method, adjust as needed
                 )
+
+            print('loan repayment created')
 
             # 4. Create Penalty Account (optional)
 
@@ -941,6 +943,7 @@ def loan_approval(company_id,loanapp_id, approval_status = None,rejected_reason 
             )
 
             # 5. Create Interest Account (optional)
+            print('loan penalty created')
 
             loan_interest_account = InterestAccount.objects.create(
                     account_no = f'IA00{loan_id}',
@@ -948,6 +951,7 @@ def loan_approval(company_id,loanapp_id, approval_status = None,rejected_reason 
                     loan_id=loan['data'],
                     interest_accrued=0.0,  # Initial interest accrued can be set to 0.00
                 )
+            print('loan intrest created')
             
             loan_milestone_account = MilestoneAccount.objects.create(
                     # account_no = f'IA00{loan_id}',
@@ -955,6 +959,7 @@ def loan_approval(company_id,loanapp_id, approval_status = None,rejected_reason 
                     loan_id=loan['data'],
                     milestone_cost=0.0,  # Initial milestone accrued can be set to 0.00
                 )
+            print('loan milestone created')
 
             #====================================== approved amount transfer to loanaccount from centralfunding account ===============
             get_loan = Loan.objects.get(id = loan_id)
@@ -990,6 +995,7 @@ def loan_approval(company_id,loanapp_id, approval_status = None,rejected_reason 
                     interest_amount = float(data['Interest']),
                     remaining_balance = float(data['Closing_Balance']),
                 )
+            print('loan repayment created')
             
             if loan['status_code'] == 1:
                 return error(f"An error occurred: {loan['data']}")
@@ -1076,6 +1082,7 @@ def create_loan(loanapp_id):
             interest_basics = records.interest_basics,
             loan_purpose = records.loan_purpose,
             workflow_stats = "Approved",
+            loan_calculation_method = records.loan_calculation_method,
 
         )
 
@@ -1643,12 +1650,11 @@ def getting_repayment_schedules(company_id,loanapp_id):
     except Exception as e:
         return error(f"An error occurred: {e}")
 
-
 def getting_next_schedules(company_id, loanapp_id):
     try:
         # Filter repayment schedules based on company and loan application
         instance = RepaymentSchedule.objects.filter(company_id=company_id, loan_id_id=loanapp_id, repayment_status='Pending')
-    
+        total=len(instance)
         # Order by repayment date to find the earliest pending repayment
         next_due_schedule = instance.order_by('repayment_date').first()
 
@@ -1658,7 +1664,8 @@ def getting_next_schedules(company_id, loanapp_id):
             amount_due = next_due_schedule.instalment_amount
             return success({
                 "next_due_date": next_due_date,
-                "amount_due": amount_due
+                "amount_due": amount_due,
+                "total":total
             })
         else:
             return error("No pending repayment schedules found.")
@@ -2512,7 +2519,7 @@ def delete_customer_feedback(feedback_id):
 
 
 
-def calculate_repayment_schedule(loan_amount, interest_rate, tenure, tenure_type, repayment_schedule, loan_calculation_method, repayment_start_date, repayment_mode,loantype_id):
+def calculate_repayment_schedule(loan_amount, interest_rate, tenure, tenure_type, repayment_schedule, loan_calculation_method, repayment_start_date, repayment_mode,loantype_id=None):
     """
     Main function to execute the repayment calculations based on the selected method.
     
@@ -2529,6 +2536,7 @@ def calculate_repayment_schedule(loan_amount, interest_rate, tenure, tenure_type
     Returns:
     repayment_plan (list): A list containing the repayment plan details.
     """
+    print(loan_calculation_method)
     # Convert the tenure to days based on the tenure type (months, years)
     tenure_in_days = convert_tenure_to_days(tenure, tenure_type)
     
@@ -2793,6 +2801,14 @@ from django.http import JsonResponse
 def get_loan_type_details(id): 
     try:
         instance = LoanType.objects.get(id = id)
+        serializer = LoanTypeSerializer(instance)
+        return success(serializer.data) 
+    except Exception as e:
+        return error(f"An error occurred: {e}")
+
+def get_tenure_details(loantype): 
+    try:
+        instance = LoanType.objects.get(loantype = loantype)
         serializer = LoanTypeSerializer(instance)
         return success(serializer.data) 
     except Exception as e:
@@ -4907,8 +4923,8 @@ from django.utils.html import escape
 def template_fields(loan_id,template_id):
     try:
         template = Template.objects.get(pk=template_id)
-        # loan = Loan.objects.filter(loanapp_id_id=loan_id)
-        
+        # loan = Loan.objects.get(loanapp_id_id=loan_id)
+
         # Find all placeholders in the template content for initial form rendering
         placeholders = [placeholder.strip() for placeholder in re.findall(r'\{\{(\s*\w+\s*)\}\}', template.content)]
         placeholders_with_value = tag_replacement(placeholders, loan_id)
@@ -5102,5 +5118,178 @@ def view_loan_for_dashboard(company_id):
         return error('Loan does not exist')
     except Exception as e:
         # Return an error response with the exception message
+        return error(f"An error occurred: {e}")
+
+def loan_restructure(company_id,loanapp_id,loan_id,new_tenure,new_amount,repayment_start_date, approval_status = None,rejected_reason = None,loantype_id=None):
+    BASE_URL = "https://bbaccountingtest.pythonanywhere.com/loan-setup/"
+    
+    try:
+        print('loanapp_id',loanapp_id)
+        request = get_current_request()
+        if not request.user.is_authenticated:
+            return error('Login required')
+
+        instance = LoanApplication.objects.get(id=loanapp_id)
+        if approval_status == "restructured":
+            instance.tenure=new_tenure
+            instance.application_status='restructured'
+            instance.loan_amount=new_amount
+            # instance.workflow_stats = "restructured"
+            instance.save()
+
+            # ============ create loan ================
+            print('loan_id',loan_id)
+
+            loan1 = Loan.objects.filter(id = loan_id)
+            if loan1:
+                # loan = create_loan_restructure(loanapp_id,new_tenure,new_amount)
+                print('successfully restructured')
+            # else:
+            #     loan = create_loan(loanapp_id)
+                
+            
+            # loan_id = loan['data']
+            
+            print('loan_id',loan_id)
+            # 1. Create Loan Account
+     
+            # loan_account = LoanAccount.objects.create(
+            #     account_no=f'LA00{loan_id}',
+            #     company_id=company_id,
+            #     loan_id=loan_id,
+            #     principal_amount=0.0,
+            #     outstanding_balance=instance.loan_amount,
+            # )
+            print('account created')
+            # 2. Create Loan Disbursement Account
+
+            # loan_disbursement_account = LoanDisbursementAccount.objects.create(
+            #     account_no=f'DA00{loan_id}',
+            #     company_id=company_id,
+            #     loan_id=loan_id,
+            #     amount=0.0,
+            #     loan_account=loan_account,
+            # )
+            print('account 2 created')
+
+            # 3. Create Repayment Account
+    
+            # loan_repayment_account = LoanRepaymentAccount.objects.create(
+            #         account_no=f'RA00{loan_id}',
+            #         company_id=company_id,
+            #         loan_id=loan_id,
+            #         amount=0.0,  # Initial amount can be set to 0.00
+            #         payment_method='bank_transfer',  # Default method, adjust as needed
+            #     )
+            print('account 3 created')
+
+            # 4. Create Penalty Account (optional)
+
+            # loan_penalty_account = PenaltyAccount.objects.create(
+            #     account_no = f'PA00{loan_id}',
+            #     company_id=company_id,
+            #     loan_id=loan_id,
+            #     penalty_amount=0.0,  # Initial penalty amount can be set to 0.00
+            #     penalty_reason='N/A',  # Placeholder, adjust as necessary
+            # )
+
+            # 5. Create Interest Account (optional)
+
+            # loan_interest_account = InterestAccount.objects.create(
+            #         account_no = f'IA00{loan_id}',
+            #         company_id=company_id,
+            #         loan_id=loan_id,
+            #         interest_accrued=0.0,  # Initial interest accrued can be set to 0.00
+            #     )
+            
+            # loan_milestone_account = MilestoneAccount.objects.create(
+            #         # account_no = f'IA00{loan_id}',
+            #         company_id=company_id,
+            #         loan_id=loan_id,
+            #         milestone_cost=0.0,  # Initial milestone accrued can be set to 0.00
+            #     )
+
+            #====================================== approved amount transfer to loanaccount from centralfunding account ===============
+            get_loan = Loan.objects.get(id = loan_id)
+            get_centralaccount = CentralFundingAccount.objects.get(company_id = company_id)
+            get_centralaccount.account_balance -= get_loan.approved_amount    # the loan amount depit from centralfundingaccount
+            get_loanaccount = LoanAccount.objects.get(loan_id = loan_id)
+            get_loanaccount.principal_amount += get_loan.approved_amount      # the loan amount credit from centralfundingaccount
+            get_centralaccount.save()
+            get_loanaccount.save()
+
+            # =============== calling repayment schedule  =====================
+            schedules = calculate_repayment_schedule(new_amount,instance.interest_rate, new_tenure, instance.tenure_type, instance.repayment_schedule, instance.loan_calculation_method,repayment_start_date, instance.repayment_mode)
+            print('schedules created',schedules)
+            if schedules['status_code'] == 1: 
+                return error(f"An error occurred: {schedules['data']}")
+            print('count',len(schedules))
+            for data in schedules['data']:
+                # generate Unique id 
+                generate_id = RepaymentSchedule.objects.last()
+                last_id = '00'
+                if generate_id:
+                    last_id = generate_id.schedule_id[10:]
+                schedule_id = unique_id('SID',last_id)
+
+                aa = RepaymentSchedule.objects.create(
+                    company_id = instance.company.id,
+                    schedule_id = schedule_id,
+                    loan_application_id = instance.id,
+                    loan_id_id = loan_id,
+                    period = float(data['Period']),
+                    repayment_date = data['Due_Date'],
+                    instalment_amount = float(data['Installment']),
+                    principal_amount = float(data['Principal']),
+                    interest_amount = float(data['Interest']),
+                    remaining_balance = float(data['Closing_Balance']),
+                )
+            
+            # if loan['status_code'] == 1:
+            #     return error(f"An error occurred: {loan['data']}")
+        elif approval_status == "Rejected":
+            instance.application_status = "Rejected"
+            instance.rejected_reason = rejected_reason
+        else:
+            instance.application_status = "Submitted"
+        instance.save()
+        return success("Successfully Restructured Your Application")
+    except LoanApplication.DoesNotExist:
+        return error('Instance does not exist')
+    except Exception as e:
+        return error(f"An error occurred: {e}")
+
+def restructure_list(company_id):
+    try:
+        data=LoanApplication.objects.filter(company_id=company_id,application_status='restructured')
+        serializer = LoanapplicationSerializer(data,many=True)
+        
+        return success(serializer.data) 
+    except Exception as e:
+        return error(f"An error occurred: {e}")
+    
+def create_loan_restructure(loanapp_id,new_tenure,new_amount):
+    try:
+        request = get_current_request()
+        if not request.user.is_authenticated:
+            return error('Login required')
+
+        records = LoanApplication.objects.get(pk=loanapp_id)
+
+        # generate Unique id 
+        generate_id = Loan.objects.last()
+        last_id = '00'
+        if generate_id:
+            last_id = generate_id.loan_id[9:]
+        loan_id = unique_id('LN',last_id)
+
+        # create loan
+    except Company.DoesNotExist:
+        return error('Invalid Company ID: Destination not found.')
+    except Customer.DoesNotExist:
+        return error('Invalid Customer ID: Destination not found.')
+    except ValidationError as e:
+        return error(f"Validation Error: {e}")
+    except Exception as e:
         return error(f"An error occurred: {e}")
 

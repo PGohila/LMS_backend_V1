@@ -120,7 +120,7 @@ def calculate_flat_rate(loan_amount, interest_rate, tenure, periods, interval, r
     loan_amount = float(loan_amount)
     interest_rate = float(interest_rate)
     tenure = float(tenure)
-    
+    principal_payment=0
     fixed_interest = loan_amount * interest_rate / float(100) * tenure / float(12)
     monthly_payment = (loan_amount + fixed_interest) / periods
     remaining_principal = loan_amount
@@ -261,7 +261,7 @@ def calculate_compound_interest(loan_amount, interest_rate, periods, interval, r
     interest_rate = float(interest_rate) / float(100)
     
     remaining_principal = loan_amount
-    
+    principal_payment=0
     if isinstance(repayment_start_date, str):
         repayment_start_date = datetime.strptime(repayment_start_date, '%Y-%m-%d').date()
     
