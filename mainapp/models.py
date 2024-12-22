@@ -106,6 +106,17 @@ class LoanType(models.Model):
     disbursement_beneficiary = models.CharField(max_length=20,choices=DISBURSEMENT_BENEFICIARY_CHOICES,default='pay_self') # 
     description = models.TextField(blank = True,null =True)
     interest_rate = models.FloatField(default = 0.0) # percentage
+    loan_calculation_method = models.CharField(max_length=150,blank=True,null=True,choices=[
+        ('reducing_balance', 'Reducing Balance Method'),
+        ('flat_rate', 'Flat Rate Method'),
+        ('constant_repayment', 'Constant Repayment (Amortization)'),
+        ('simple_interest', 'Simple Interest'),
+        ('compound_interest', 'Compound Interest'),
+        ('graduated_repayment', 'Graduated Repayment'),
+        ('balloon_payment', 'Balloon Payment'),
+        ('bullet_repayment', 'Bullet Repayment'),
+        ('interest_first', 'Interest-Only Loans'),
+    ])
     loan_teams = models.IntegerField() # Standard loan term duration for this type, in months.
     min_loan_amt = models.FloatField(default = 0.0)
     max_loan_amt = models.FloatField(default = 0.0)
@@ -196,46 +207,37 @@ class CustomerDocuments(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
 class LoanCalculators(models.Model):
-	loan_amount = 	models.FloatField(default = 0.0) # principal amount
-	interest_rate = models.FloatField(default = 0.0) # 
-	tenure = models.IntegerField(help_text="Tenure in days/weeks/months/years depending on the schedule.") # number of month
-	tenure_type = models.CharField(max_length=100,choices=[
-		('days', 'Days'),
-        ('weeks', 'Weeks'),
-        ('months', 'Months'),
-        ('years', 'Years')])
-	repayment_schedule = models.CharField(max_length=100,choices=[('daily', 'Daily'),
-        ('weekly', 'Weekly'),
-        ('monthly', 'Monthly'),
-        ('quarterly', 'Quarterly'),
-        ('halfyearly', 'Half Yearly'),
-        ('annually', 'Annually'),
-        ('one_time', 'One Time'),]) # 
-	repayment_mode = models.CharField(max_length=100,choices=[
-        ('principal_only', 'Principal Only'),
-        ('interest_only', 'Interest Only'),
-        ('both', 'Principal and Interest'),
-        ('interest_first', 'Interest First, Principal Later'),
-        ('principal_end', 'Principal at End, Interest Periodically'),
-    ])
-	interest_basics = models.CharField(max_length=100,choices=[
-        ('365', '365 Days Basis'),
-        ('other', 'Other Basis'),
-    ])
-	loan_calculation_method = models.CharField(max_length=150,choices=[
-        ('reducing_balance', 'Reducing Balance Method'),
-        ('flat_rate', 'Flat Rate Method'),
-        ('constant_repayment', 'Constant Repayment (Amortization)'),
-        ('simple_interest', 'Simple Interest'),
-        ('compound_interest', 'Compound Interest'),
-        ('graduated_repayment', 'Graduated Repayment'),
-        ('balloon_payment', 'Balloon Payment'),
-        ('bullet_repayment', 'Bullet Repayment'),
-        ('interest_first', 'Interest-Only Loans'),
-    ])
-	repayment_start_date = models.DateField()
-	created_at = models.DateField(auto_now=True)
-	updated_at = models.DateField(auto_now=True)
+        loantype = models.ForeignKey(LoanType,on_delete=models.CASCADE, related_name='%(class)s_loantype',null=True,blank=True) # personal loan etc
+        loan_amount = 	models.FloatField(default = 0.0) # principal amount
+        interest_rate = models.FloatField(default = 0.0) # 
+        tenure = models.IntegerField(help_text="Tenure in days/weeks/months/years depending on the schedule.") # number of month
+        tenure_type = models.CharField(max_length=100,choices=[
+            ('days', 'Days'),
+            ('weeks', 'Weeks'),
+            ('months', 'Months'),
+            ('years', 'Years')])
+        repayment_schedule = models.CharField(max_length=100,choices=[('daily', 'Daily'),
+            ('weekly', 'Weekly'),
+            ('monthly', 'Monthly'),
+            ('quarterly', 'Quarterly'),
+            ('halfyearly', 'Half Yearly'),
+            ('annually', 'Annually'),
+            ('one_time', 'One Time'),]) # 
+        repayment_mode = models.CharField(max_length=100,choices=[
+            ('principal_only', 'Principal Only'),
+            ('interest_only', 'Interest Only'),
+            ('both', 'Principal and Interest'),
+            ('interest_first', 'Interest First, Principal Later'),
+            ('principal_end', 'Principal at End, Interest Periodically'),
+        ])
+        interest_basics = models.CharField(max_length=100,choices=[
+            ('365', '365 Days Basis'),
+            ('other', 'Other Basis'),
+        ])
+        loan_calculation_method = models.CharField(max_length=150)
+        repayment_start_date = models.DateField()
+        created_at = models.DateField(auto_now=True)
+        updated_at = models.DateField(auto_now=True)
 
 class LoanApplication(models.Model):
     company = models.ForeignKey(Company,on_delete=models.CASCADE, related_name='%(class)s_company')
@@ -276,18 +278,7 @@ class LoanApplication(models.Model):
         ('365', '365 Days Basis'),
         ('other', 'Other Basis'),
     ])
-    loan_calculation_method = models.CharField(max_length=150,choices=[
-        ('reducing_balance', 'Reducing Balance Method'),
-        ('flat_rate', 'Flat Rate Method'),
-        ('constant_repayment', 'Constant Repayment (Amortization)'),
-        ('simple_interest', 'Simple Interest'),
-        ('compound_interest', 'Compound Interest'),
-        ('graduated_repayment', 'Graduated Repayment'),
-        ('balloon_payment', 'Balloon Payment'),
-        ('bullet_repayment', 'Bullet Repayment'),
-        ('interest_first', 'Interest-Only Loans'),
-    ])
-
+    loan_calculation_method = models.CharField(max_length=150)
     repayment_start_date = models.DateField()
     applied_at = models.DateField(auto_now=True) # application date
     approved_at = models.DateField(blank=True,null=True) # loan application approved date
