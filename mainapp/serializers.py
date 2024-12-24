@@ -202,6 +202,23 @@ class RepaymentscheduleSerializer(serializers.ModelSerializer):
         model = RepaymentSchedule
         fields = "__all__"
 
+class RefinancescheduleSerializer(serializers.ModelSerializer):
+    loan_application = LoanapplicationSerializer()
+    loan_id = LoanSerializer()
+    company = CompanySerializer()
+    class Meta:
+        model = RefinanceSchedule
+        fields = "__all__"
+
+class RestructurescheduleSerializer(serializers.ModelSerializer):
+    loan_application = LoanapplicationSerializer()
+    loan_id = LoanSerializer()
+    company = CompanySerializer()
+    class Meta:
+        model = RestructureSchedule
+        fields = "__all__"
+
+
 class PenaltySerializer(serializers.ModelSerializer):
     company = CompanySerializer()
     loan = LoanSerializer()
