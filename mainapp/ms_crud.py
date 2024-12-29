@@ -5529,3 +5529,33 @@ def confirmed_refinance_schedule(loan_id):
         return success('Sucessfully Confirmed') 
     except Exception as e:
         return error(f"An error occurred: {e}")
+
+def view_refinance_loan(loan_id=None,loanapp_id = None,company=None):
+    try:
+        print(loan_id,loanapp_id,company)
+        request = get_current_request()
+        if not request.user.is_authenticated:
+            return error('Login required')
+        
+        if loan_id is not None:
+            record = Loan.objects.get(pk=loan_id)
+            print("==================",record.id)
+            serializer = LoanSerializer(record)
+        elif loanapp_id is not None:
+            record = Loan.objects.filter(loanapp_id_id=loanapp_id).exclude(loan_status='refinanced')
+            serializer = LoanSerializer(record)
+
+        elif company is not None:
+            records = Loan.objects.filter(company_id = company).exclude(loan_status='refinanced')
+            serializer = LoanSerializer(records, many=True)
+        else:
+            records = Loan.objects.all().order_by('-id')
+            serializer = LoanSerializer(records, many=True)
+        return success(serializer.data)
+    
+    except Loan.DoesNotExist:
+        # Return an error response if the {model_name} does not exist
+        return error('Loan does not exist')
+    except Exception as e:
+        # Return an error response with the exception message
+        return error(f"An error occurred: {e}")
