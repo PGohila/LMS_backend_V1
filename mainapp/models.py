@@ -1102,3 +1102,7 @@ class RefinanceSchedule(models.Model):
     ],default="Pending")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+class refinance_reference(models.Model):
+     loanapp_num=models.CharField(max_length=50)
+     refinance_num=models.CharField(max_length=50)

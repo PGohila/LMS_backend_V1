@@ -561,7 +561,6 @@ def create_loanapplication(company_id, customer_id, loan_amount,loantype_id, loa
         application_id = unique_id('LA',last_id)
 
 
-
         instance = LoanApplication.objects.create(
             company_id = company_id,
             application_id = application_id,
@@ -1640,34 +1639,75 @@ def getting_disbursementloans(company_id):
         return error(f"An error occurred: {e}")
 
 
-def getting_repayment_schedules(company_id,loanapp_id):
+def getting_repayment_schedules(company_id,loanapp_id=None,loanapplication_id=None):
     try:
-        instance = RepaymentSchedule.objects.filter(company_id=company_id,loan_id_id = loanapp_id)
-        serializer = RepaymentscheduleSerializer(instance,many=True)
-        
+        if loanapp_id:
+            instance = RepaymentSchedule.objects.filter(company_id=company_id,loan_id_id = loanapp_id)
+            serializer = RepaymentscheduleSerializer(instance,many=True)
+        else:
+            instance = RepaymentSchedule.objects.filter(company_id=company_id,loan_application_id = loanapplication_id)
+            serializer = RepaymentscheduleSerializer(instance,many=True)
+
         return success(serializer.data) 
     except Exception as e:
         return error(f"An error occurred: {e}")
 
-def getting_next_schedules(company_id, loanapp_id):
+def getting_next_schedules(company_id, loanapp_id=None,loanapplication_id=None):
     try:
+        print(company_id, loanapp_id,loanapplication_id)
+        if loanapp_id:
         # Filter repayment schedules based on company and loan application
-        instance = RepaymentSchedule.objects.filter(company_id=company_id, loan_id_id=loanapp_id, repayment_status='Pending')
-        total=len(instance)
-        # Order by repayment date to find the earliest pending repayment
-        next_due_schedule = instance.order_by('repayment_date').first()
+            instance = RepaymentSchedule.objects.filter(company_id=company_id, loan_id_id=loanapp_id, repayment_status='Pending')
+            total=len(instance)
+            # Order by repayment date to find the earliest pending repayment
+            next_due_schedule = instance.order_by('repayment_date').first()
 
-        if next_due_schedule:
-            # Fetch next due date and instalment amount
-            next_due_date = next_due_schedule.repayment_date
-            amount_due = next_due_schedule.instalment_amount
-            return success({
-                "next_due_date": next_due_date,
-                "amount_due": amount_due,
-                "total":total
-            })
-        else:
-            return error("No pending repayment schedules found.")
+            if next_due_schedule:
+                # Fetch next due date and instalment amount
+                next_due_date = next_due_schedule.repayment_date
+                amount_due = next_due_schedule.instalment_amount
+                return success({
+                    "next_due_date": next_due_date,
+                    "amount_due": amount_due,
+                    "total":total
+                })
+        elif loanapplication_id:
+            # Filter repayment schedules based on company and loan application
+# Filter repayment schedules based on company and loan application
+            instance = RepaymentSchedule.objects.filter(company_id=company_id, loan_application_id=loanapplication_id)
+            total = 0
+
+            # Filter further based on 'Pending' repayment status if needed
+            pending_instance = instance.filter(repayment_status='Pending')
+            if pending_instance.exists():  # Check if there are any "Pending" repayments
+                # Order by repayment date to find the earliest pending repayment
+                next_due_schedule = pending_instance.order_by('repayment_date').first()
+                total=len(pending_instance)
+                if next_due_schedule is not None:
+                    # Fetch next due date and instalment amount
+                    next_due_date = next_due_schedule.repayment_date
+                    amount_due = next_due_schedule.instalment_amount
+                    return success({
+                        "next_due_date": next_due_date,
+                        "amount_due": amount_due,
+                        "total": total
+                    })
+            else:
+                # If no "Pending" repayments, still return the earliest repayment from all available ones
+                next_due_schedule = instance.order_by('repayment_date').first()
+
+                if next_due_schedule is not None:
+                    # Fetch next due date and instalment amount
+                    next_due_date = next_due_schedule.repayment_date
+                    amount_due = next_due_schedule.instalment_amount
+                    return success({
+                        "next_due_date": next_due_date,
+                        "amount_due": amount_due,
+                        "total": total
+                    })
+
+            # If no repayments were found at all
+            return error("No repayments found.")
             
     except Exception as e:
         return error(f"An error occurred: {e}")
@@ -5291,7 +5331,9 @@ def loan_refinance(company_id,loanapp_id,loan_id,new_tenure,new_amount,repayment
         if not request.user.is_authenticated:
             return error('Login required')
         instance1 = LoanApplication.objects.get(id=loanapp_id)
-
+        if instance1:
+            instance1.application_status='Cleared balance and moved for refinance'
+            instance1.save()
         instance = Loan.objects.get(loanapp_id_id=loanapp_id)
         if approval_status == "refinanced":
             instance.tenure=new_tenure
@@ -5306,6 +5348,13 @@ def loan_refinance(company_id,loanapp_id,loan_id,new_tenure,new_amount,repayment
             get_loanaccount.principal_amount += get_loan.approved_amount      # the loan amount credit from centralfundingaccount
             get_centralaccount.save()
             get_loanaccount.save()
+
+            repayment_instance=RepaymentSchedule.objects.filter(loan_application_id=loanapp_id)
+            print('length',len(repayment_instance),repayment_instance)
+            for data in repayment_instance:
+                if data.repayment_status=='Pending':
+                    data.repayment_status='Settled'
+                    data.save()
 
             # =============== calling repayment schedule  =====================
             schedules = calculate_repayment_schedule(new_amount,instance.interest_rate, new_tenure, instance.tenure_type, instance.repayment_schedule, instance.loan_calculation_method,repayment_start_date, instance.repayment_mode)
@@ -5333,7 +5382,44 @@ def loan_refinance(company_id,loanapp_id,loan_id,new_tenure,new_amount,repayment
                     interest_amount = float(data['Interest']),
                     remaining_balance = float(data['Closing_Balance']),
                 )
- 
+            generate_id = LoanApplication.objects.last()
+            last_id = '00'
+            if generate_id:
+                last_id = generate_id.application_id[9:]
+            refinance_id = unique_id('RF',last_id)
+            print('loan ref id',refinance_id)
+            print('cus if',instance1.customer_id)
+            customer=Customer.objects.get(customer_id=instance1.customer_id)
+            print('id',customer.id)
+            customerid=customer.id
+            print('customerid',customerid)
+            instance2 = LoanApplication.objects.create(
+            company_id = company_id,
+            application_id = refinance_id,
+            customer_id_id =customerid,
+            loantype_id = instance1.loantype_id,
+            loan_amount = new_amount,
+            loan_purpose = instance1.loan_purpose,
+            application_status = 'Submitted',
+            loan_calculation_method = instance1.loan_calculation_method,
+            repayment_schedule = instance1.repayment_schedule,
+            repayment_mode = instance1.repayment_mode,
+            interest_rate = instance1.interest_rate,
+            disbursement_type = instance1.disbursement_type,
+            interest_basics =instance1.interest_basics,
+            repayment_start_date =instance1.repayment_start_date,
+            tenure = new_tenure,
+            tenure_type = instance1.tenure_type,
+            description = instance1.description,
+            workflow_stats = "Submitted",
+            is_active = True,
+            )
+            print('instance2',instance2)
+            refinance_reference.objects.create(
+                loanapp_num=instance1.application_id,
+                refinance_num=refinance_id
+
+            )
         elif approval_status == "Rejected":
             instance.application_status = "Rejected"
             instance.rejected_reason = rejected_reason
