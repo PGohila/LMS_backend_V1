@@ -126,6 +126,7 @@ class LoanType(models.Model):
     is_active = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True) 
+    is_refinance=models.BooleanField(default=False)
 
 # Collateral Type Master Table
 class CollateralType(models.Model):
@@ -381,6 +382,7 @@ class Loan(models.Model):
     risk_score = models.FloatField(default=0.0, null=True, blank=True)  # E.g., from 0.00 to 100.00
     risk_factor = models.TextField(null=True, blank=True)  # To store detailed risk factors as text
     is_active = models.BooleanField(default=True)
+    loan_status=models.CharField(max_length=25,default='Active_Loan')
     def __str__(self):
         return f"Loan {self.loan_id}"
 
@@ -1030,3 +1032,77 @@ class Template(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+
+class RestructureSchedule(models.Model):
+    company = models.ForeignKey(Company,on_delete=models.CASCADE, related_name='%(class)s_company')
+    loan_application = models.ForeignKey(LoanApplication,on_delete=models.CASCADE,related_name='%(class)s_loan_application')
+    loan_id = models.ForeignKey(Loan,on_delete=models.CASCADE,blank=True,null=True)
+    period = models.IntegerField(default=0)
+    schedule_id = models.CharField(max_length=50)
+    repayment_date = models.DateField()
+    instalment_amount = models.FloatField(default = 0.0)
+    paid_amount = models.FloatField(default = 0.0)
+    principal_amount = models.FloatField(default = 0.0)
+    interest_amount = models.FloatField(default = 0.0)
+    remaining_balance = models.FloatField(default = 0.0)
+    repayment_status = models.CharField(max_length = 50,choices = [
+        ('Paid', 'Paid'),
+        ('Pending', 'Pending'),
+        
+    ],default="Pending")
+    payment_method = models.ForeignKey(PaymentMethod,on_delete=models.CASCADE,related_name='%(class)s_payment_method',blank=True,null=True)
+    total_penalty_amt = models.FloatField(default = 0.0)
+    payable_penalty_amt = models.FloatField(default = 0.0)
+    penalty_reason = models.CharField(max_length = 100,blank=True,null = True)
+    penalty_status = models.CharField(max_length = 50,choices = [
+        ('Paid', 'Paid'),
+        ('Pending', 'Pending'),
+        
+    ],default="Pending")
+    transaction_id = models.CharField(max_length=50,blank=True,null=True)
+    notes = models.TextField(blank=True,null=True)
+    confirmed_status = models.CharField(max_length=50,choices = [
+        ('Confirmed', 'Confirmed'),
+        ('Pending', 'Pending'),
+    ],default="Pending")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+class RefinanceSchedule(models.Model):
+    company = models.ForeignKey(Company,on_delete=models.CASCADE, related_name='%(class)s_company')
+    loan_application = models.ForeignKey(LoanApplication,on_delete=models.CASCADE,related_name='%(class)s_loan_application')
+    loan_id = models.ForeignKey(Loan,on_delete=models.CASCADE,blank=True,null=True)
+    period = models.IntegerField(default=0)
+    schedule_id = models.CharField(max_length=50)
+    repayment_date = models.DateField()
+    instalment_amount = models.FloatField(default = 0.0)
+    paid_amount = models.FloatField(default = 0.0)
+    principal_amount = models.FloatField(default = 0.0)
+    interest_amount = models.FloatField(default = 0.0)
+    remaining_balance = models.FloatField(default = 0.0)
+    repayment_status = models.CharField(max_length = 50,choices = [
+        ('Paid', 'Paid'),
+        ('Pending', 'Pending'),
+        
+    ],default="Pending")
+    payment_method = models.ForeignKey(PaymentMethod,on_delete=models.CASCADE,related_name='%(class)s_payment_method',blank=True,null=True)
+    total_penalty_amt = models.FloatField(default = 0.0)
+    payable_penalty_amt = models.FloatField(default = 0.0)
+    penalty_reason = models.CharField(max_length = 100,blank=True,null = True)
+    penalty_status = models.CharField(max_length = 50,choices = [
+        ('Paid', 'Paid'),
+        ('Pending', 'Pending'),
+        
+    ],default="Pending")
+    transaction_id = models.CharField(max_length=50,blank=True,null=True)
+    notes = models.TextField(blank=True,null=True)
+    confirmed_status = models.CharField(max_length=50,choices = [
+        ('Confirmed', 'Confirmed'),
+        ('Pending', 'Pending'),
+    ],default="Pending")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+class refinance_reference(models.Model):
+     loanapp_num=models.CharField(max_length=50)
+     refinance_num=models.CharField(max_length=50)

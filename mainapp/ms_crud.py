@@ -561,7 +561,6 @@ def create_loanapplication(company_id, customer_id, loan_amount,loantype_id, loa
         application_id = unique_id('LA',last_id)
 
 
-
         instance = LoanApplication.objects.create(
             company_id = company_id,
             application_id = application_id,
@@ -1110,7 +1109,6 @@ def view_loan(loan_id=None,loanapp_id = None,company=None):
             return error('Login required')
         
         if loan_id is not None:
-            
             record = Loan.objects.get(pk=loan_id)
             print("==================",record.id)
             serializer = LoanSerializer(record)
@@ -1641,34 +1639,75 @@ def getting_disbursementloans(company_id):
         return error(f"An error occurred: {e}")
 
 
-def getting_repayment_schedules(company_id,loanapp_id):
+def getting_repayment_schedules(company_id,loanapp_id=None,loanapplication_id=None):
     try:
-        instance = RepaymentSchedule.objects.filter(company_id=company_id,loan_id_id = loanapp_id)
-        serializer = RepaymentscheduleSerializer(instance,many=True)
-        
+        if loanapp_id:
+            instance = RepaymentSchedule.objects.filter(company_id=company_id,loan_id_id = loanapp_id)
+            serializer = RepaymentscheduleSerializer(instance,many=True)
+        else:
+            instance = RepaymentSchedule.objects.filter(company_id=company_id,loan_application_id = loanapplication_id)
+            serializer = RepaymentscheduleSerializer(instance,many=True)
+
         return success(serializer.data) 
     except Exception as e:
         return error(f"An error occurred: {e}")
 
-def getting_next_schedules(company_id, loanapp_id):
+def getting_next_schedules(company_id, loanapp_id=None,loanapplication_id=None):
     try:
+        print(company_id, loanapp_id,loanapplication_id)
+        if loanapp_id:
         # Filter repayment schedules based on company and loan application
-        instance = RepaymentSchedule.objects.filter(company_id=company_id, loan_id_id=loanapp_id, repayment_status='Pending')
-        total=len(instance)
-        # Order by repayment date to find the earliest pending repayment
-        next_due_schedule = instance.order_by('repayment_date').first()
+            instance = RepaymentSchedule.objects.filter(company_id=company_id, loan_id_id=loanapp_id, repayment_status='Pending')
+            total=len(instance)
+            # Order by repayment date to find the earliest pending repayment
+            next_due_schedule = instance.order_by('repayment_date').first()
 
-        if next_due_schedule:
-            # Fetch next due date and instalment amount
-            next_due_date = next_due_schedule.repayment_date
-            amount_due = next_due_schedule.instalment_amount
-            return success({
-                "next_due_date": next_due_date,
-                "amount_due": amount_due,
-                "total":total
-            })
-        else:
-            return error("No pending repayment schedules found.")
+            if next_due_schedule:
+                # Fetch next due date and instalment amount
+                next_due_date = next_due_schedule.repayment_date
+                amount_due = next_due_schedule.instalment_amount
+                return success({
+                    "next_due_date": next_due_date,
+                    "amount_due": amount_due,
+                    "total":total
+                })
+        elif loanapplication_id:
+            # Filter repayment schedules based on company and loan application
+# Filter repayment schedules based on company and loan application
+            instance = RepaymentSchedule.objects.filter(company_id=company_id, loan_application_id=loanapplication_id)
+            total = 0
+
+            # Filter further based on 'Pending' repayment status if needed
+            pending_instance = instance.filter(repayment_status='Pending')
+            if pending_instance.exists():  # Check if there are any "Pending" repayments
+                # Order by repayment date to find the earliest pending repayment
+                next_due_schedule = pending_instance.order_by('repayment_date').first()
+                total=len(pending_instance)
+                if next_due_schedule is not None:
+                    # Fetch next due date and instalment amount
+                    next_due_date = next_due_schedule.repayment_date
+                    amount_due = next_due_schedule.instalment_amount
+                    return success({
+                        "next_due_date": next_due_date,
+                        "amount_due": amount_due,
+                        "total": total
+                    })
+            else:
+                # If no "Pending" repayments, still return the earliest repayment from all available ones
+                next_due_schedule = instance.order_by('repayment_date').first()
+
+                if next_due_schedule is not None:
+                    # Fetch next due date and instalment amount
+                    next_due_date = next_due_schedule.repayment_date
+                    amount_due = next_due_schedule.instalment_amount
+                    return success({
+                        "next_due_date": next_due_date,
+                        "amount_due": amount_due,
+                        "total": total
+                    })
+
+            # If no repayments were found at all
+            return error("No repayments found.")
             
     except Exception as e:
         return error(f"An error occurred: {e}")
@@ -2713,7 +2752,7 @@ def create_loantype(company_id,loantype,disbursement_beneficiary=None,interest_r
     except Exception as e:
         return error(f"An error occurred: {e}")
 
-def update_loantype(company_id,loantype_id,loantype,disbursement_beneficiary=None,interest_rate=None,loan_calculation_method=None,loan_teams=None,min_loan_amt=None,max_loan_amt=None,eligibility=None,collateral_required=False,charges=None,is_active=False,description = None ):
+def update_loantype(company_id,loantype_id,loantype,disbursement_beneficiary=None,interest_rate=None,loan_calculation_method=None,loan_teams=None,min_loan_amt=None,max_loan_amt=None,eligibility=None,collateral_required=False,charges=None,is_active=False,is_refinance=False,description = None ):
     try:
         request = get_current_request()
         if not request.user.is_authenticated:
@@ -2737,6 +2776,7 @@ def update_loantype(company_id,loantype_id,loantype,disbursement_beneficiary=Non
         instance.collateral_required = collateral_required if collateral_required is not None else instance.collateral_required
         instance.charges = charges if charges is not None else instance.charges
         instance.is_active = is_active if is_active is not None else instance.is_active
+        instance.is_refinance = is_refinance if is_refinance is not None else instance.is_refinance
         instance.save()
         try:
             log_audit_trail(request.user.id,'LoanType Registration', instance, 'Update', 'Object Updated.')
@@ -2798,10 +2838,14 @@ def delete_loantype(loantype_id):
 
 from django.http import JsonResponse
 
-def get_loan_type_details(id): 
+def get_loan_type_details(id=None,loantype_id=None): 
     try:
-        instance = LoanType.objects.get(id = id)
-        serializer = LoanTypeSerializer(instance)
+        if id:
+            instance = LoanType.objects.get(id = id)
+            serializer = LoanTypeSerializer(instance)
+        elif loantype_id:
+            instance = LoanType.objects.get(loantype_id = loantype_id)
+            serializer = LoanTypeSerializer(instance)
         return success(serializer.data) 
     except Exception as e:
         return error(f"An error occurred: {e}")
@@ -5128,88 +5172,15 @@ def loan_restructure(company_id,loanapp_id,loan_id,new_tenure,new_amount,repayme
         request = get_current_request()
         if not request.user.is_authenticated:
             return error('Login required')
+        instance1 = LoanApplication.objects.get(id=loanapp_id)
 
-        instance = LoanApplication.objects.get(id=loanapp_id)
+        instance = Loan.objects.get(loanapp_id_id=loanapp_id)
         if approval_status == "restructured":
             instance.tenure=new_tenure
-            instance.application_status='restructured'
+            instance.loan_status='restructured'
             instance.loan_amount=new_amount
             # instance.workflow_stats = "restructured"
             instance.save()
-
-            # ============ create loan ================
-            print('loan_id',loan_id)
-
-            loan1 = Loan.objects.filter(id = loan_id)
-            if loan1:
-                # loan = create_loan_restructure(loanapp_id,new_tenure,new_amount)
-                print('successfully restructured')
-            # else:
-            #     loan = create_loan(loanapp_id)
-                
-            
-            # loan_id = loan['data']
-            
-            print('loan_id',loan_id)
-            # 1. Create Loan Account
-     
-            # loan_account = LoanAccount.objects.create(
-            #     account_no=f'LA00{loan_id}',
-            #     company_id=company_id,
-            #     loan_id=loan_id,
-            #     principal_amount=0.0,
-            #     outstanding_balance=instance.loan_amount,
-            # )
-            print('account created')
-            # 2. Create Loan Disbursement Account
-
-            # loan_disbursement_account = LoanDisbursementAccount.objects.create(
-            #     account_no=f'DA00{loan_id}',
-            #     company_id=company_id,
-            #     loan_id=loan_id,
-            #     amount=0.0,
-            #     loan_account=loan_account,
-            # )
-            print('account 2 created')
-
-            # 3. Create Repayment Account
-    
-            # loan_repayment_account = LoanRepaymentAccount.objects.create(
-            #         account_no=f'RA00{loan_id}',
-            #         company_id=company_id,
-            #         loan_id=loan_id,
-            #         amount=0.0,  # Initial amount can be set to 0.00
-            #         payment_method='bank_transfer',  # Default method, adjust as needed
-            #     )
-            print('account 3 created')
-
-            # 4. Create Penalty Account (optional)
-
-            # loan_penalty_account = PenaltyAccount.objects.create(
-            #     account_no = f'PA00{loan_id}',
-            #     company_id=company_id,
-            #     loan_id=loan_id,
-            #     penalty_amount=0.0,  # Initial penalty amount can be set to 0.00
-            #     penalty_reason='N/A',  # Placeholder, adjust as necessary
-            # )
-
-            # 5. Create Interest Account (optional)
-
-            # loan_interest_account = InterestAccount.objects.create(
-            #         account_no = f'IA00{loan_id}',
-            #         company_id=company_id,
-            #         loan_id=loan_id,
-            #         interest_accrued=0.0,  # Initial interest accrued can be set to 0.00
-            #     )
-            
-            # loan_milestone_account = MilestoneAccount.objects.create(
-            #         # account_no = f'IA00{loan_id}',
-            #         company_id=company_id,
-            #         loan_id=loan_id,
-            #         milestone_cost=0.0,  # Initial milestone accrued can be set to 0.00
-            #     )
-
-            #====================================== approved amount transfer to loanaccount from centralfunding account ===============
             get_loan = Loan.objects.get(id = loan_id)
             get_centralaccount = CentralFundingAccount.objects.get(company_id = company_id)
             get_centralaccount.account_balance -= get_loan.approved_amount    # the loan amount depit from centralfundingaccount
@@ -5226,16 +5197,16 @@ def loan_restructure(company_id,loanapp_id,loan_id,new_tenure,new_amount,repayme
             print('count',len(schedules))
             for data in schedules['data']:
                 # generate Unique id 
-                generate_id = RepaymentSchedule.objects.last()
+                generate_id = RestructureSchedule.objects.last()
                 last_id = '00'
                 if generate_id:
                     last_id = generate_id.schedule_id[10:]
                 schedule_id = unique_id('SID',last_id)
-
-                aa = RepaymentSchedule.objects.create(
+                print('schedule_id',schedule_id)
+                aa = RestructureSchedule.objects.create(
                     company_id = instance.company.id,
                     schedule_id = schedule_id,
-                    loan_application_id = instance.id,
+                    loan_application_id = instance1.id,
                     loan_id_id = loan_id,
                     period = float(data['Period']),
                     repayment_date = data['Due_Date'],
@@ -5244,15 +5215,8 @@ def loan_restructure(company_id,loanapp_id,loan_id,new_tenure,new_amount,repayme
                     interest_amount = float(data['Interest']),
                     remaining_balance = float(data['Closing_Balance']),
                 )
-            
-            # if loan['status_code'] == 1:
-            #     return error(f"An error occurred: {loan['data']}")
-        elif approval_status == "Rejected":
-            instance.application_status = "Rejected"
-            instance.rejected_reason = rejected_reason
-        else:
-            instance.application_status = "Submitted"
-        instance.save()
+ 
+
         return success("Successfully Restructured Your Application")
     except LoanApplication.DoesNotExist:
         return error('Instance does not exist')
@@ -5261,8 +5225,11 @@ def loan_restructure(company_id,loanapp_id,loan_id,new_tenure,new_amount,repayme
 
 def restructure_list(company_id):
     try:
-        data=LoanApplication.objects.filter(company_id=company_id,application_status='restructured')
-        serializer = LoanapplicationSerializer(data,many=True)
+        print('company_id',company_id)
+        data=Loan.objects.filter(company_id=company_id,loan_status='restructured')
+        # data1=Loan.objects.filter(company_id=company_id,loanapp_id_id=data.id)
+        print('data',data)
+        serializer = LoanSerializer(data,many=True)
         
         return success(serializer.data) 
     except Exception as e:
@@ -5293,3 +5260,388 @@ def create_loan_restructure(loanapp_id,new_tenure,new_amount):
     except Exception as e:
         return error(f"An error occurred: {e}")
 
+def getting_repayment_restructure_schedules(company_id,loanapp_id):
+    try:
+        print(f"company_id: {company_id}, loanapp_id: {loanapp_id}")
+        instance = RestructureSchedule.objects.filter(company_id=company_id,loan_id_id = loanapp_id)
+        serializer = RestructurescheduleSerializer(instance,many=True)
+        
+        return success(serializer.data) 
+    except Exception as e:
+        return error(f"An error occurred: {e}")
+
+def getting_next_restructure_schedules(company_id, loanapp_id):
+    try:
+        print(company_id,loanapp_id)
+        print(f"company_id: {company_id}, loanapp_id: {loanapp_id}")
+
+        # Filter repayment schedules based on company and loan application
+        instance = RestructureSchedule.objects.filter(company_id=company_id, loan_id_id=loanapp_id)
+        total=len(instance)
+        # Order by repayment date to find the earliest pending repayment
+        next_due_schedule = instance.order_by('repayment_date').first()
+
+        if next_due_schedule:
+            # Fetch next due date and instalment amount
+            next_due_date = next_due_schedule.repayment_date
+            amount_due = next_due_schedule.instalment_amount
+            return success({
+                "next_due_date": next_due_date,
+                "amount_due": amount_due,
+                "total":total
+            })
+        else:
+            return error("No pending repayment schedules found.")
+            
+    except Exception as e:
+        return error(f"An error occurred: {e}")
+
+def view_loan_detail(company_id,loan_id):
+    try:
+        loan_instance=Loan.objects.filter(loan_id=loan_id,company_id=company_id)
+        serializer = LoanSerializer(loan_instance,many=True)
+          
+        return success(serializer.data)
+    except Exception as e:
+        return error(f"An error occurred: {e}")
+
+def view_loanapp_detail(loanapp_id,company_id):
+    try:
+        loan_app_instance=LoanApplication.objects.filter(application_id=loanapp_id,company_id=company_id)
+        serializer = LoanapplicationSerializer(loan_app_instance,many=True)
+        return success(serializer.data)
+    except Exception as e:
+        return error(f"An error occurred: {e}")
+
+
+def view_loantype_detail(loantype_id,company_id):
+    try:
+        loantype_instance=LoanType.objects.filter(loantype_id=loantype_id,company_id=company_id)
+        serializer = LoanTypeSerializer(loantype_instance,many=True)
+        return success(serializer.data)
+    except Exception as e:
+        return error(f"An error occurred: {e}")
+
+def loan_refinance(company_id,loanapp_id,loan_id,new_tenure,new_amount,repayment_start_date, approval_status = None,rejected_reason = None,loantype_id=None):
+    BASE_URL = "https://bbaccountingtest.pythonanywhere.com/loan-setup/"
+    
+    try:
+        print('loanapp_id',loanapp_id)
+        request = get_current_request()
+        if not request.user.is_authenticated:
+            return error('Login required')
+        instance1 = LoanApplication.objects.get(id=loanapp_id)
+        if instance1:
+            instance1.application_status='Cleared balance and moved for refinance'
+            instance1.save()
+        instance = Loan.objects.get(loanapp_id_id=loanapp_id)
+        if approval_status == "refinanced":
+            instance.tenure=new_tenure
+            instance.loan_status='refinanced'
+            instance.loan_amount=new_amount
+            # instance.workflow_stats = "restructured"
+            instance.save()
+            get_loan = Loan.objects.get(id = loan_id)
+            get_centralaccount = CentralFundingAccount.objects.get(company_id = company_id)
+            get_centralaccount.account_balance -= get_loan.approved_amount    # the loan amount depit from centralfundingaccount
+            get_loanaccount = LoanAccount.objects.get(loan_id = loan_id)
+            get_loanaccount.principal_amount += get_loan.approved_amount      # the loan amount credit from centralfundingaccount
+            get_centralaccount.save()
+            get_loanaccount.save()
+
+            repayment_instance=RepaymentSchedule.objects.filter(loan_application_id=loanapp_id)
+            print('length',len(repayment_instance),repayment_instance)
+            for data in repayment_instance:
+                if data.repayment_status=='Pending':
+                    data.repayment_status='Settled'
+                    data.save()
+
+            # =============== calling repayment schedule  =====================
+            schedules = calculate_repayment_schedule(new_amount,instance.interest_rate, new_tenure, instance.tenure_type, instance.repayment_schedule, instance.loan_calculation_method,repayment_start_date, instance.repayment_mode)
+            print('schedules created',schedules)
+            if schedules['status_code'] == 1: 
+                return error(f"An error occurred: {schedules['data']}")
+            print('count',len(schedules))
+            for data in schedules['data']:
+                # generate Unique id 
+                generate_id = RefinanceSchedule.objects.last()
+                last_id = '00'
+                if generate_id:
+                    last_id = generate_id.schedule_id[10:]
+                schedule_id = unique_id('SID',last_id)
+
+                aa = RefinanceSchedule.objects.create(
+                    company_id = instance.company.id,
+                    schedule_id = schedule_id,
+                    loan_application_id = instance1.id,
+                    loan_id_id = loan_id,
+                    period = float(data['Period']),
+                    repayment_date = data['Due_Date'],
+                    instalment_amount = float(data['Installment']),
+                    principal_amount = float(data['Principal']),
+                    interest_amount = float(data['Interest']),
+                    remaining_balance = float(data['Closing_Balance']),
+                )
+            generate_id = LoanApplication.objects.last()
+            last_id = '00'
+            if generate_id:
+                last_id = generate_id.application_id[9:]
+            refinance_id = unique_id('RF',last_id)
+            print('loan ref id',refinance_id)
+            print('cus if',instance1.customer_id)
+            customer=Customer.objects.get(customer_id=instance1.customer_id)
+            print('id',customer.id)
+            customerid=customer.id
+            print('customerid',customerid)
+            instance2 = LoanApplication.objects.create(
+            company_id = company_id,
+            application_id = refinance_id,
+            customer_id_id =customerid,
+            loantype_id = instance1.loantype_id,
+            loan_amount = new_amount,
+            loan_purpose = instance1.loan_purpose,
+            application_status = 'Submitted',
+            loan_calculation_method = instance1.loan_calculation_method,
+            repayment_schedule = instance1.repayment_schedule,
+            repayment_mode = instance1.repayment_mode,
+            interest_rate = instance1.interest_rate,
+            disbursement_type = instance1.disbursement_type,
+            interest_basics =instance1.interest_basics,
+            repayment_start_date =instance1.repayment_start_date,
+            tenure = new_tenure,
+            tenure_type = instance1.tenure_type,
+            description = instance1.description,
+            workflow_stats = "Submitted",
+            is_active = True,
+            )
+            print('instance2',instance2)
+            refinance_reference.objects.create(
+                loanapp_num=instance1.application_id,
+                refinance_num=refinance_id
+
+            )
+        elif approval_status == "Rejected":
+            instance.application_status = "Rejected"
+            instance.rejected_reason = rejected_reason
+        else:
+            instance.application_status = "Submitted"
+        instance.save()
+        return success("Successfully Refinanced Your Application")
+    except LoanApplication.DoesNotExist:
+        return error('Instance does not exist')
+    except Exception as e:
+        return error(f"An error occurred: {e}")
+
+def getting_repayment_refinance_schedules(company_id,loanapp_id):
+    try:
+        print(f"company_id: {company_id}, loanapp_id: {loanapp_id}")
+        instance = RefinanceSchedule.objects.filter(company_id=company_id,loan_id_id = loanapp_id)
+        serializer = RefinancescheduleSerializer(instance,many=True)
+        
+        return success(serializer.data) 
+    except Exception as e:
+        return error(f"An error occurred: {e}")
+
+def getting_next_refinance_schedules(company_id, loanapp_id):
+    try:
+        print(company_id,loanapp_id)
+        print(f"company_id: {company_id}, loanapp_id: {loanapp_id}")
+
+        # Filter repayment schedules based on company and loan application
+        instance = RefinanceSchedule.objects.filter(company_id=company_id, loan_id_id=loanapp_id)
+        total=len(instance)
+        # Order by repayment date to find the earliest pending repayment
+        next_due_schedule = instance.order_by('repayment_date').first()
+
+        if next_due_schedule:
+            # Fetch next due date and instalment amount
+            next_due_date = next_due_schedule.repayment_date
+            amount_due = next_due_schedule.instalment_amount
+            return success({
+                "next_due_date": next_due_date,
+                "amount_due": amount_due,
+                "total":total
+            })
+        else:
+            return error("No pending repayment schedules found.")
+            
+    except Exception as e:
+        return error(f"An error occurred: {e}")
+
+def confirmed_rstructure_schedule(loan_id):
+    try:
+        loans = RestructureSchedule.objects.filter(loan_id_id = loan_id)
+        for data in loans:
+            data.confirmed_status = 'Confirmed'
+            data.save()
+        return success('Sucessfully Confirmed') 
+    except Exception as e:
+        return error(f"An error occurred: {e}")
+
+
+def getting_restructure_schedule(schedule_id = None,uniques_id = None):
+    try:
+        if uniques_id is not None:
+            instance=RestructureSchedule.objects.get(id= uniques_id)
+            serializer=RestructurescheduleSerializer(instance)
+        else:
+            instance=RestructureSchedule.objects.get(schedule_id= schedule_id)
+            serializer=RestructurescheduleSerializer(instance)
+        return success(serializer.data) 
+    except Exception as e:
+        return error(f"An error occurred: {e}")
+
+
+def paid_restructure_schedule(schedule_id):
+    try:
+        print('schedule_id',schedule_id)
+        schedule=RestructureSchedule.objects.get(id = schedule_id)
+        if schedule:
+            schedule.repayment_status = 'Paid'
+            schedule.paid_amount=schedule.instalment_amount
+
+            schedule.save()
+        return success('Sucessfully Confirmed') 
+    except Exception as e:
+        return error(f"An error occurred: {e}")
+
+
+def view_active_loan(loan_id=None,loanapp_id = None,company=None):
+    try:
+        print(loan_id,loanapp_id,company)
+        request = get_current_request()
+        if not request.user.is_authenticated:
+            return error('Login required')
+        
+        if loan_id is not None:
+            record = Loan.objects.get(pk=loan_id)
+            print("==================",record.id)
+            serializer = LoanSerializer(record)
+        elif loanapp_id is not None:
+            record = Loan.objects.filter(loanapp_id_id=loanapp_id,loan_status='Active_Loan').last()
+            serializer = LoanSerializer(record)
+
+        elif company is not None:
+            records = Loan.objects.filter(company_id = company,loan_status='Active_Loan')
+            serializer = LoanSerializer(records, many=True)
+        else:
+            records = Loan.objects.all().order_by('-id')
+            serializer = LoanSerializer(records, many=True)
+        return success(serializer.data)
+    
+    except Loan.DoesNotExist:
+        # Return an error response if the {model_name} does not exist
+        return error('Loan does not exist')
+    except Exception as e:
+        # Return an error response with the exception message
+        return error(f"An error occurred: {e}")
+
+
+def view_refinance_loan(loan_id=None,loanapp_id = None,company=None):
+    try:
+        print(loan_id,loanapp_id,company)
+        request = get_current_request()
+        if not request.user.is_authenticated:
+            return error('Login required')
+        
+        if loan_id is not None:
+            record = Loan.objects.get(pk=loan_id)
+            print("==================",record.id)
+            serializer = LoanSerializer(record)
+        elif loanapp_id is not None:
+            record = Loan.objects.filter(loanapp_id_id=loanapp_id,loan_status='refinanced').last()
+            serializer = LoanSerializer(record)
+
+        elif company is not None:
+            records = Loan.objects.filter(company_id = company,loan_status='refinanced')
+            serializer = LoanSerializer(records, many=True)
+        else:
+            records = Loan.objects.all().order_by('-id')
+            serializer = LoanSerializer(records, many=True)
+        return success(serializer.data)
+    
+    except Loan.DoesNotExist:
+        # Return an error response if the {model_name} does not exist
+        return error('Loan does not exist')
+    except Exception as e:
+        # Return an error response with the exception message
+        return error(f"An error occurred: {e}")
+
+
+def refinance_list(company_id):
+    try:
+        print('company_id',company_id)
+        data=Loan.objects.filter(company_id=company_id,loan_status='refinanced')
+        # data1=Loan.objects.filter(company_id=company_id,loanapp_id_id=data.id)
+        print('data',data)
+        serializer = LoanSerializer(data,many=True)
+        
+        return success(serializer.data) 
+    except Exception as e:
+        return error(f"An error occurred: {e}")
+
+def getting_refinance_schedule(schedule_id = None,uniques_id = None):
+    try:
+        if uniques_id is not None:
+            instance=RefinanceSchedule.objects.get(id= uniques_id)
+            serializer=RefinancescheduleSerializer(instance)
+        else:
+            instance=RefinanceSchedule.objects.get(schedule_id= schedule_id)
+            serializer=RefinancescheduleSerializer(instance)
+        return success(serializer.data) 
+    except Exception as e:
+        return error(f"An error occurred: {e}")
+
+
+def paid_refinance_schedule(schedule_id):
+    try:
+        print('schedule_id',schedule_id)
+        schedule=RefinanceSchedule.objects.get(id = schedule_id)
+        if schedule:
+            schedule.repayment_status = 'Paid'
+            schedule.paid_amount=schedule.instalment_amount
+
+            schedule.save()
+        return success('Sucessfully Confirmed') 
+    except Exception as e:
+        return error(f"An error occurred: {e}")
+
+def confirmed_refinance_schedule(loan_id):
+    try:
+        loans = RefinanceSchedule.objects.filter(loan_id_id = loan_id)
+        for data in loans:
+            data.confirmed_status = 'Confirmed'
+            data.save()
+        return success('Sucessfully Confirmed') 
+    except Exception as e:
+        return error(f"An error occurred: {e}")
+
+def view_refinance_loan(loan_id=None,loanapp_id = None,company=None):
+    try:
+        print(loan_id,loanapp_id,company)
+        request = get_current_request()
+        if not request.user.is_authenticated:
+            return error('Login required')
+        
+        if loan_id is not None:
+            record = Loan.objects.get(pk=loan_id)
+            print("==================",record.id)
+            serializer = LoanSerializer(record)
+        elif loanapp_id is not None:
+            record = Loan.objects.filter(loanapp_id_id=loanapp_id).exclude(loan_status='refinanced')
+            serializer = LoanSerializer(record)
+
+        elif company is not None:
+            records = Loan.objects.filter(company_id = company).exclude(loan_status='refinanced')
+            serializer = LoanSerializer(records, many=True)
+        else:
+            records = Loan.objects.all().order_by('-id')
+            serializer = LoanSerializer(records, many=True)
+        return success(serializer.data)
+    
+    except Loan.DoesNotExist:
+        # Return an error response if the {model_name} does not exist
+        return error('Loan does not exist')
+    except Exception as e:
+        # Return an error response with the exception message
+        return error(f"An error occurred: {e}")
